@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
     if (selectedSource == "AnimeciX") {
         system("animecix-cli");
     } else if (selectedSource == "OpenAnime") {
-        system("./openanime-cli");
+        system("openanime-cli");
     } else {
         exit(1);
     }
