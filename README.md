@@ -10,10 +10,24 @@
 
 **anitr-cli:** Hızlı bir şekilde anime araması yapabileceğiniz ve istediğiniz animeyi Türkçe altyazılı izleyebileceğiniz terminal aracıdır 💫 Anime severler için hafif, pratik ve kullanışlı bir çözüm sunar 🚀
 
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/xeyossr/anitr-cli?style=for-the-badge)
-![AUR](https://img.shields.io/aur/version/anitr-cli?style=for-the-badge)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/xeyossr/anitr-cli?style=for-the-badge&include_prereleases&label=GitHub%20Release)](https://github.com/xeyossr/anitr-cli/releases)
+[![Windows release (latest by date)](https://img.shields.io/github/v/release/mstsecurity/anitr-cli-windows?include_prereleases&display_name=release&label=Windows%20Fork&style=for-the-badge)](https://github.com/mstsecurity/anitr-cli-windows)
+[![AUR](https://img.shields.io/aur/version/anitr-cli?style=for-the-badge)](https://aur.archlinux.org/packages/anitr-cli)
 
 ## 💻 Kurulum
+
+### 🪟 Windows Kullanıcıları
+
+Bu proje Linux için geliştirilmiştir. **Windows kullanıcıları**, [anitr-cli-windows](https://github.com/mstsecurity/anitr-cli-windows) forkunu kullanabilirler:
+
+> 🔗 [https://github.com/mstsecurity/anitr-cli-windows](https://github.com/mstsecurity/anitr-cli-windows)
+
+Bu fork, Windows uyumluluğu amacıyla oluşturulmuştur ve Windows üzerinde çalışmak için gerekli düzenlemeleri içerir.
+Windows sürümünün ortaya çıkmasındaki katkılarından dolayı [@mstsecurity](https://github.com/mstsecurity)'ye teşekkür ederiz.
+
+Forkun geliştirilmesine orijinal proje geliştiricisi [@xeyossr](https://github.com/xeyossr) da katkıda bulunmaktadır.
+
+### 🐧 Linux Kullanıcıları
 
 Eğer Arch tabanlı bir dağıtım kullanıyorsanız, [AUR](https://aur.archlinux.org/packages/anitr-cli) üzerinden tek bir komut ile indirebilirsiniz:
 
