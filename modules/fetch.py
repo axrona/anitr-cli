@@ -4,7 +4,7 @@ from urllib.parse import urlparse, parse_qs
 
 class animecix:
     def __init__(self):
-        self.base_url = "https://anm.cx/"
+        self.base_url = "https://animecix.tv/"
         self.video_players = ["tau-video.xyz", "sibnet"]
         self.headers = {
             'Accept': 'application/json',

@@ -9,7 +9,7 @@ discord_rpc = utils.get_env("discord_rpc", "DISCORD_RPC", default="enabled")
 save_position_on_quit = utils.get_bool_env(
     "save_position_on_quit", "SAVE_POSITION_ON_QUIT", default="false")
 
-sources = ["AnimeciX (anm.cx)", "OpenAnime (openani.me)"]  # Kaynaklar
+sources = ["AnimeciX (animecix.tv)", "OpenAnime (openani.me)"]  # Kaynaklar
 
 # Global Discord RPC durumu ve zaman
 discord_client_id = "1383421771159572600"

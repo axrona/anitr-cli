@@ -215,7 +215,7 @@ def AnimeciX():
             large_image=poster_url,
             large_text=f"{selected_anime_name}",
             source="AnimeciX",
-            source_url="https://anm.cx"
+            source_url="https://animecix.tv"
         )
 
         if config.discord_rpc.lower() == "enabled":
@@ -282,7 +282,7 @@ def AnimeciX():
                 large_image=poster_url,
                 large_text=f"{selected_anime_name}",
                 source="AnimeciX",
-                source_url="https://anm.cx"
+                source_url="https://animecix.tv"
             )
 
             rpc.update_discord_rpc()
@@ -303,7 +303,7 @@ def AnimeciX():
                 large_image=poster_url,
                 large_text=f"{selected_anime_name}",
                 source="AnimeciX",
-                source_url="https://anm.cx"
+                source_url="https://animecix.tv"
             )
 
             rpc.update_discord_rpc()
@@ -328,7 +328,7 @@ def AnimeciX():
                 large_image=poster_url,
                 large_text=f"{selected_anime_name}",
                 source="AnimeciX",
-                source_url="https://anm.cx"
+                source_url="https://animecix.tv"
             )
 
             rpc.update_discord_rpc()
@@ -349,7 +349,7 @@ def AnimeciX():
 
         elif selected_option == "Kaynak değiştir":
             selected_source = utils.get_source(ui)
-            if selected_source == "AnimeciX (anm.cx)":
+            if selected_source == "AnimeciX (animecix.tv)":
                 return AnimeciX()
             elif selected_source == "OpenAnime (openani.me)":
                 return OpenAnime()
@@ -588,7 +588,7 @@ def OpenAnime():
 
         elif selected_option == "Kaynak değiştir":
             selected_source = utils.get_source(ui)
-            if selected_source == "AnimeciX (anm.cx)":
+            if selected_source == "AnimeciX (animecix.tv)":
                 return AnimeciX()
             elif selected_source == "OpenAnime (openani.me)":
                 return OpenAnime()
@@ -640,7 +640,7 @@ def main():
             sys.exit(1)
 
     selected_source = utils.get_source(ui)
-    if selected_source == "AnimeciX (anm.cx)":
+    if selected_source == "AnimeciX (animecix.tv)":
         AnimeciX()
     elif selected_source == "OpenAnime (openani.me)":
         OpenAnime()
