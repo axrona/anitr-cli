@@ -1,18 +1,18 @@
 <div align="center">
   <h1>Önizleme</h1>
-</div>
 
 [preview.mp4](https://github.com/user-attachments/assets/199d940e-14c6-468c-9120-496185ab2217)
 
-<p>
-  <img src="assets/discord_rpc_preview.png"/>
-</p>
+| ![](.github/discord_rpc1.png) | ![](.github/discord_rpc2.png) |
+| ----------------------------- | ----------------------------- |
 
 **anitr-cli:** Hızlı bir şekilde anime araması yapabileceğiniz ve istediğiniz animeyi Türkçe altyazılı izleyebileceğiniz terminal aracıdır 💫 Anime severler için hafif, pratik ve kullanışlı bir çözüm sunar 🚀
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/xeyossr/anitr-cli?style=for-the-badge&include_prereleases&label=GitHub%20Release)](https://github.com/xeyossr/anitr-cli/releases)
 [![Windows release (latest by date)](https://img.shields.io/github/v/release/mstsecurity/anitr-cli-windows?include_prereleases&display_name=release&label=Windows%20Fork&style=for-the-badge)](https://github.com/mstsecurity/anitr-cli-windows)
 [![AUR](https://img.shields.io/aur/version/anitr-cli?style=for-the-badge)](https://aur.archlinux.org/packages/anitr-cli)
+
+</div>
 
 ## 💻 Kurulum
 
