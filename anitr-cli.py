@@ -102,6 +102,10 @@ def AnimeciX():
 
     search_data = animecix().fetch_anime_search_data(query)
 
+    if not search_data:
+        ui.show_error(config.default_ui, "Arama sonucu bulunamadı.")
+        return
+
     anime_data = [{"name": item["name"], "id": item["id"], "title_type": item.get(
         "title_type", ""), "type": item.get("type", ""), "poster": item.get("poster", "")} for item in search_data]
     anime_names = [f'{item["name"]} (ID: {item["id"]})' for item in anime_data]
