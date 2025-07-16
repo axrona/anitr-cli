@@ -17,10 +17,6 @@
 # This is for Go 1.11 and later, use go clean -cache to remove them
 /pkg/
 
-# Go module files
-/go.sum
-/go.mod
-
 # IDE or editor directories
 /.idea
 /.vscode
