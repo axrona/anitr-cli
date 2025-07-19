@@ -891,6 +891,13 @@ func startWatchingAnime(selectedAnime map[string]interface{}, startEpisode int, 
 		startEpisode = 0
 	}
 
+	if len(episodes) == 0 {
+		fmt.Println("\033[31mBölüm bulunamadı!\033[0m")
+		fmt.Println("Devam etmek için bir tuşa basın...")
+		fmt.Scanln()
+		return
+	}
+
 	episodeNames := []string{}
 	for _, e := range episodes {
 		episodeNames = append(episodeNames, internal.GetString(e, "name"))
@@ -1038,10 +1045,20 @@ func handleAnimeSearch(_ string, _ *string, logger *utils.Logger, favManager *fa
 	if !isMovie {
 		episodes, err = animecix.FetchAnimeEpisodesData(selectedAnimeID)
 		FailIfErr(err, logger)
+		if len(episodes) == 0 {
+			fmt.Println("\033[31mBölüm bulunamadı!\033[0m")
+			fmt.Println("Devam etmek için bir tuşa basın...")
+			fmt.Scanln()
+			return
+		}
 		for _, e := range episodes {
 			episodeNames = append(episodeNames, internal.GetString(e, "name"))
 		}
-		selectedSeasonIndex = int(episodes[selectedEpisodeIndex]["season_num"].(float64)) - 1
+		if selectedEpisodeIndex >= 0 && selectedEpisodeIndex < len(episodes) {
+			selectedSeasonIndex = int(episodes[selectedEpisodeIndex]["season_num"].(float64)) - 1
+		} else {
+			selectedSeasonIndex = 0
+		}
 	} else {
 		episodeNames = []string{selectedAnimeName}
 		episodes = []map[string]interface{}{
@@ -1097,7 +1114,9 @@ func handleAnimeSearch(_ string, _ *string, logger *utils.Logger, favManager *fa
 			}
 
 			// Sezonu her seferinde güncelle
-			selectedSeasonIndex = int(episodes[selectedEpisodeIndex]["season_num"].(float64)) - 1
+			if selectedEpisodeIndex >= 0 && selectedEpisodeIndex < len(episodes) {
+				selectedSeasonIndex = int(episodes[selectedEpisodeIndex]["season_num"].(float64)) - 1
+			}
 
 			data, err := updateWatchApi(episodes, selectedEpisodeIndex, selectedAnimeID, selectedSeasonIndex, selectedEpisodeIndex, isMovie)
 			if !checkErr(err, logger) {
@@ -1121,7 +1140,7 @@ func handleAnimeSearch(_ string, _ *string, logger *utils.Logger, favManager *fa
 
 			if !*disableRpc {
 				state := selectedAnimeName
-				if !isMovie {
+				if !isMovie && selectedEpisodeIndex >= 0 && selectedEpisodeIndex < len(episodeNames) {
 					state = fmt.Sprintf("%s (%d/%d)", episodeNames[selectedEpisodeIndex], selectedEpisodeIndex+1, len(episodes))
 				}
 
@@ -1142,7 +1161,7 @@ func handleAnimeSearch(_ string, _ *string, logger *utils.Logger, favManager *fa
 
 			// Add to watch history
 			episodeName := selectedAnimeName
-			if !isMovie {
+			if !isMovie && selectedEpisodeIndex >= 0 && selectedEpisodeIndex < len(episodeNames) {
 				episodeName = episodeNames[selectedEpisodeIndex]
 			}
 			if err := histManager.AddWatchEntry(selectedAnimeID, selectedAnimeName, selectedEpisodeIndex, episodeName, selectedSeasonIndex, posterUrl); err != nil {
@@ -1195,7 +1214,10 @@ func handleAnimeSearch(_ string, _ *string, logger *utils.Logger, favManager *fa
 
 			if !*disableRpc {
 				totalEpisodes := len(episodes)
-				state := fmt.Sprintf("%s (%d/%d)", episodeNames[selectedEpisodeIndex], selectedEpisodeIndex+1, totalEpisodes)
+				state := selectedAnimeName
+				if selectedEpisodeIndex >= 0 && selectedEpisodeIndex < len(episodeNames) {
+					state = fmt.Sprintf("%s (%d/%d)", episodeNames[selectedEpisodeIndex], selectedEpisodeIndex+1, totalEpisodes)
+				}
 				if err := rpc.DiscordRPC(internal.RPCParams{
 					Details:    selectedAnimeName,
 					State:      state,
