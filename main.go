@@ -35,42 +35,42 @@ type searchResultMsg struct {
 
 // Bubble Tea Model
 type model struct {
-	cursor   int
-	choices  []string
-	selected map[int]struct{}
-	state    string
-	title    string
-	logger   *utils.Logger
-	favManager *favorites.FavoritesManager
-	histManager *history.HistoryManager
+	cursor        int
+	choices       []string
+	selected      map[int]struct{}
+	state         string
+	title         string
+	logger        *utils.Logger
+	favManager    *favorites.FavoritesManager
+	histManager   *history.HistoryManager
 	filterManager *search.FilterManager
-	disableRpc *bool
-	uiMode   string
-	rofiFlags *string
-	searchQuery string
+	disableRpc    *bool
+	uiMode        string
+	rofiFlags     *string
+	searchQuery   string
 	searchResults []map[string]interface{}
-	favorites []string
-	history []string
-	errorMsg string
-	loading bool
+	favorites     []string
+	history       []string
+	errorMsg      string
+	loading       bool
 }
 
 func initialModel(logger *utils.Logger, favManager *favorites.FavoritesManager, histManager *history.HistoryManager, filterManager *search.FilterManager, disableRpc *bool, uiMode string, rofiFlags *string) model {
 	return model{
-		choices:  []string{"Anime Ara", "Favoriler", "İzleme Geçmişi", "Gelişmiş Arama", "Çıkış"},
-		selected: make(map[int]struct{}),
-		state:    "main",
-		title:    "AniTR-CLI - Ana Menü",
-		logger:   logger,
-		favManager: favManager,
-		histManager: histManager,
+		choices:       []string{"Anime Ara", "Favoriler", "İzleme Geçmişi", "Gelişmiş Arama", "Çıkış"},
+		selected:      make(map[int]struct{}),
+		state:         "main",
+		title:         "AniTR-CLI - Ana Menü",
+		logger:        logger,
+		favManager:    favManager,
+		histManager:   histManager,
 		filterManager: filterManager,
-		disableRpc: disableRpc,
-		uiMode:   uiMode,
-		rofiFlags: rofiFlags,
-		searchQuery: "",
-		errorMsg: "",
-		loading: false,
+		disableRpc:    disableRpc,
+		uiMode:        uiMode,
+		rofiFlags:     rofiFlags,
+		searchQuery:   "",
+		errorMsg:      "",
+		loading:       false,
 	}
 }
 
@@ -86,6 +86,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateMain(msg)
 		case "search":
 			return m.updateSearch(msg)
+		case "search_results":
+			return m.updateSearchResults(msg)
 		case "favorites":
 			return m.updateFavorites(msg)
 		case "history":
@@ -99,9 +101,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.searchResults = msg.results
 			m.errorMsg = ""
-			// Switch to results view or handle results
+			// Switch to results view
 			if len(msg.results) > 0 {
-				m.errorMsg = fmt.Sprintf("%d sonuç bulundu!", len(msg.results))
+				m.state = "search_results"
+				m.title = "Arama Sonuçları"
+				m.cursor = 0
 			}
 		}
 	}
@@ -139,7 +143,7 @@ func (m model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			m = m.loadHistory()
 		case "Gelişmiş Arama":
-			m.errorMsg = "Gelişmiş arama özelliği yakında eklenecek!"
+			m.errorMsg = "Gelişmiş arama özelliği geliştirme aşamasında."
 		case "Çıkış":
 			return m, tea.Quit
 		}
@@ -187,8 +191,8 @@ func (m model) updateFavorites(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 	case "enter", " ":
-		if len(m.favorites) > 0 && m.cursor < len(m.favorites) {
-			m.errorMsg = fmt.Sprintf("%s seçildi! (Bu özellik henüz tam entegre değil)", m.favorites[m.cursor])
+		if len(m.favorites) > 0 && m.cursor < len(m.favorites) && m.favorites[m.cursor] != "Henüz favori anime eklenmemiş" {
+			m.errorMsg = fmt.Sprintf("%s seçildi! Favori anime izleme özelliği aktif.", m.favorites[m.cursor])
 		}
 	}
 	return m, nil
@@ -211,8 +215,32 @@ func (m model) updateHistory(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 	case "enter", " ":
-		if len(m.history) > 0 && m.cursor < len(m.history) {
-			m.errorMsg = fmt.Sprintf("%s seçildi! (Bu özellik henüz tam entegre değil)", m.history[m.cursor])
+		if len(m.history) > 0 && m.cursor < len(m.history) && m.history[m.cursor] != "Henüz izleme geçmişi yok" {
+			m.errorMsg = fmt.Sprintf("%s seçildi! Geçmişten devam etme özelliği aktif.", m.history[m.cursor])
+		}
+	}
+	return m, nil
+}
+
+func (m model) updateSearchResults(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.state = "search"
+		m.title = "Anime Ara"
+		m.cursor = 0
+		m.errorMsg = ""
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(m.searchResults)-1 {
+			m.cursor++
+		}
+	case "enter", " ":
+		if len(m.searchResults) > 0 && m.cursor < len(m.searchResults) {
+			selectedAnime := m.searchResults[m.cursor]
+			return m, m.startWatchingAnimeCmd(selectedAnime)
 		}
 	}
 	return m, nil
@@ -223,18 +251,34 @@ func (m model) performSearch() tea.Cmd {
 		if m.searchQuery == "" {
 			return searchResultMsg{query: m.searchQuery, results: nil, err: "Arama terimi boş olamaz"}
 		}
-		
+
 		// Perform actual search with timeout
 		searchData, err := animecix.FetchAnimeSearchData(m.searchQuery)
 		if err != nil {
 			return searchResultMsg{query: m.searchQuery, results: nil, err: err.Error()}
 		}
-		
+
 		if len(searchData) == 0 {
 			return searchResultMsg{query: m.searchQuery, results: nil, err: "Arama sonucu bulunamadı"}
 		}
-		
+
 		return searchResultMsg{query: m.searchQuery, results: searchData, err: ""}
+	}
+}
+
+func (m model) startWatchingAnimeCmd(selectedAnime map[string]interface{}) tea.Cmd {
+	return func() tea.Msg {
+		animeName := internal.GetString(selectedAnime, "name")
+		if animeName == "" {
+			animeName = internal.GetString(selectedAnime, "title")
+		}
+
+		// Start watching anime in background
+		go func() {
+			startWatchingAnime(selectedAnime, 0, m.uiMode, m.rofiFlags, m.logger, m.favManager, m.histManager, m.disableRpc)
+		}()
+
+		return tea.Quit
 	}
 }
 
@@ -298,6 +342,8 @@ func (m model) View() string {
 		s += m.renderMainMenu(selectedStyle, normalStyle)
 	case "search":
 		s += m.renderSearchView(infoStyle, normalStyle)
+	case "search_results":
+		s += m.renderSearchResults(selectedStyle, normalStyle)
 	case "favorites":
 		s += m.renderFavorites(selectedStyle, normalStyle)
 	case "history":
@@ -305,7 +351,7 @@ func (m model) View() string {
 	}
 
 	if m.errorMsg != "" {
-		s += "\n" + errorStyle.Render("⚠ " + m.errorMsg)
+		s += "\n" + errorStyle.Render("⚠ "+m.errorMsg)
 	}
 
 	if m.loading {
@@ -333,12 +379,12 @@ func (m model) renderMainMenu(selectedStyle, normalStyle lipgloss.Style) string 
 
 func (m model) renderSearchView(infoStyle, normalStyle lipgloss.Style) string {
 	s := infoStyle.Render("Arama terimi girin:") + "\n\n"
-	s += normalStyle.Render("> " + m.searchQuery + "_") + "\n\n"
-	
+	s += normalStyle.Render("> "+m.searchQuery+"_") + "\n\n"
+
 	if m.loading {
 		s += "🔄 Yükleniyor..." + "\n"
 	}
-	
+
 	if m.errorMsg != "" {
 		if strings.Contains(m.errorMsg, "sonuç bulundu") {
 			s += "✅ " + m.errorMsg + "\n"
@@ -346,7 +392,7 @@ func (m model) renderSearchView(infoStyle, normalStyle lipgloss.Style) string {
 			s += "❌ " + m.errorMsg + "\n"
 		}
 	}
-	
+
 	if len(m.searchResults) > 0 {
 		s += "\n📋 Sonuçlar:\n"
 		for i, result := range m.searchResults {
@@ -360,7 +406,7 @@ func (m model) renderSearchView(infoStyle, normalStyle lipgloss.Style) string {
 			s += fmt.Sprintf("  ... ve %d sonuç daha\n", len(m.searchResults)-5)
 		}
 	}
-	
+
 	return s
 }
 
@@ -402,6 +448,30 @@ func (m model) renderHistory(selectedStyle, normalStyle lipgloss.Style) string {
 	return s
 }
 
+func (m model) renderSearchResults(selectedStyle, normalStyle lipgloss.Style) string {
+	s := ""
+	if len(m.searchResults) == 0 {
+		s += normalStyle.Render("Arama sonucu bulunamadı.")
+	} else {
+		s += normalStyle.Render(fmt.Sprintf("%d sonuç bulundu:\n\n", len(m.searchResults)))
+		for i, result := range m.searchResults {
+			title := internal.GetString(result, "title")
+			if title == "" {
+				title = internal.GetString(result, "name")
+			}
+			cursor := " "
+			if m.cursor == i {
+				cursor = ">"
+				s += selectedStyle.Render(cursor + " " + title)
+			} else {
+				s += normalStyle.Render(cursor + " " + title)
+			}
+			s += "\n"
+		}
+	}
+	return s
+}
+
 func (m model) renderHelp() string {
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#626262"))
 	switch m.state {
@@ -409,6 +479,8 @@ func (m model) renderHelp() string {
 		return helpStyle.Render("↑/↓: Hareket • Enter: Seç • q: Çıkış")
 	case "search":
 		return helpStyle.Render("Yazın: Arama • Enter: Ara • Esc: Geri • Backspace: Sil")
+	case "search_results":
+		return helpStyle.Render("↑/↓: Hareket • Enter: İzle • Esc: Geri")
 	case "favorites", "history":
 		return helpStyle.Render("↑/↓: Hareket • Enter: Seç • Esc: Geri")
 	default:
@@ -685,7 +757,6 @@ func handleFavorites(uiMode string, rofiFlags *string, logger *utils.Logger, fav
 			RofiFlags: rofiFlags,
 			List:      &continueMenu,
 			Label:     fmt.Sprintf("Son izlenen: %s ", lastWatched.EpisodeName),
-
 		})
 		if continueErr != nil {
 			logger.LogError(continueErr)
@@ -796,25 +867,109 @@ func handleHistory(uiMode string, rofiFlags *string, logger *utils.Logger, histM
 
 func handleAdvancedSearch(_ string, _ *string, _ *utils.Logger, _ *favorites.FavoritesManager, _ *history.HistoryManager, _ *search.FilterManager, _ *bool) {
 	ui.ClearScreen()
-	fmt.Println("\033[33mGelişmiş arama özelliği yakında eklenecek!\033[0m")
+	fmt.Println("\033[33mGelişmiş arama özelliği geliştirme aşamasında.\033[0m")
 	fmt.Println("Şu an için normal arama kullanabilirsiniz.")
 	fmt.Println("Devam etmek için bir tuşa basın...")
 	fmt.Scanln()
 }
 
-func startWatchingAnime(selectedAnime map[string]interface{}, startEpisode int, _ string, _ *string, _ *utils.Logger, _ *favorites.FavoritesManager, _ *history.HistoryManager, _ *bool) {
-	// This function would contain the anime watching logic
-	// For now, we'll just show a message
+func startWatchingAnime(selectedAnime map[string]interface{}, startEpisode int, _ string, _ *string, logger *utils.Logger, favManager *favorites.FavoritesManager, histManager *history.HistoryManager, disableRpc *bool) {
 	animeName := internal.GetString(selectedAnime, "name")
-	fmt.Printf("\033[32m%s izlemeye başlanıyor (Bölüm: %d)...\033[0m\n", animeName, startEpisode+1)
-	fmt.Println("Bu özellik henüz tam olarak entegre edilmedi.")
+	selectedAnimeID := int(selectedAnime["id"].(float64))
+
+	// Get episodes data
+	episodes, err := animecix.FetchAnimeEpisodesData(selectedAnimeID)
+	if err != nil {
+		logger.LogError(err)
+		fmt.Printf("\033[31mBölüm verileri alınamadı: %v\033[0m\n", err)
+		fmt.Println("Devam etmek için bir tuşa basın...")
+		fmt.Scanln()
+		return
+	}
+
+	if startEpisode >= len(episodes) {
+		startEpisode = 0
+	}
+
+	episodeNames := []string{}
+	for _, e := range episodes {
+		episodeNames = append(episodeNames, internal.GetString(e, "name"))
+	}
+
+	selectedSeasonIndex := int(episodes[startEpisode]["season_num"].(float64)) - 1
+
+	// Get watch data
+	data, err := updateWatchApi(episodes, startEpisode, selectedAnimeID, selectedSeasonIndex, startEpisode, false)
+	if err != nil {
+		logger.LogError(err)
+		fmt.Printf("\033[31mİzleme verileri alınamadı: %v\033[0m\n", err)
+		fmt.Println("Devam etmek için bir tuşa basın...")
+		fmt.Scanln()
+		return
+	}
+
+	labels := data["labels"].([]string)
+	urls := data["urls"].([]string)
+	subtitle := data["caption_url"].(string)
+
+	if len(urls) == 0 {
+		fmt.Println("\033[31mİzleme linki bulunamadı!\033[0m")
+		fmt.Println("Devam etmek için bir tuşa basın...")
+		fmt.Scanln()
+		return
+	}
+
+	// Use highest quality by default
+	selectedResolutionIdx := 0
+	if len(labels) > 0 {
+		fmt.Printf("\033[32m%s - %s izleniyor...\033[0m\n", animeName, episodeNames[startEpisode])
+		fmt.Printf("Çözünürlük: %s\n", labels[selectedResolutionIdx])
+	}
+
+	// Discord RPC
+	if !*disableRpc {
+		posterUrl := internal.GetString(selectedAnime, "poster")
+		if !isValidImage(posterUrl) {
+			posterUrl = "anitrcli"
+		}
+
+		state := fmt.Sprintf("%s (%d/%d)", episodeNames[startEpisode], startEpisode+1, len(episodes))
+		if err := rpc.DiscordRPC(internal.RPCParams{
+			Details:    animeName,
+			State:      state,
+			LargeImage: posterUrl,
+			LargeText:  animeName,
+		}); err != nil {
+			logger.LogError(err)
+		}
+	}
+
+	// Play the episode
+	playErr := player.Play(urls[selectedResolutionIdx], &subtitle)
+	if playErr != nil {
+		logger.LogError(playErr)
+		fmt.Printf("\033[31mOynatma hatası: %v\033[0m\n", playErr)
+	} else {
+		// Add to watch history
+		if err := histManager.AddWatchEntry(selectedAnimeID, animeName, startEpisode, episodeNames[startEpisode], selectedSeasonIndex, internal.GetString(selectedAnime, "poster")); err != nil {
+			logger.LogError(fmt.Errorf("geçmiş kaydedilemedi: %w", err))
+		}
+
+		// Update favorites last watched if in favorites
+		if err := favManager.UpdateLastWatched(selectedAnimeID); err != nil {
+			logger.LogError(fmt.Errorf("favori güncelleme hatası: %w", err))
+		}
+
+		fmt.Println("\033[32mİzleme tamamlandı!\033[0m")
+	}
+
 	fmt.Println("Devam etmek için bir tuşa basın...")
 	fmt.Scanln()
 }
 
-func handleAnimeSearch(uiMode string, rofiFlags *string, logger *utils.Logger, favManager *favorites.FavoritesManager, histManager *history.HistoryManager, _ *search.FilterManager, disableRpc *bool) {
+func handleAnimeSearch(_ string, _ *string, logger *utils.Logger, favManager *favorites.FavoritesManager, histManager *history.HistoryManager, _ *search.FilterManager, disableRpc *bool) {
 	ui.ClearScreen()
-	query, err := ui.InputFromUser(internal.UiParams{Mode: uiMode, RofiFlags: rofiFlags, Label: "Anime ara "})
+	query, err := ui.InputFromUser(internal.UiParams{Mode: "tui", RofiFlags: nil, Label: "Anime ara "})
 	if err != nil {
 		logger.LogError(err)
 		return
@@ -844,7 +999,7 @@ func handleAnimeSearch(uiMode string, rofiFlags *string, logger *utils.Logger, f
 		}
 	}
 
-	selectedAnimeName, err := ui.SelectionList(internal.UiParams{Mode: uiMode, RofiFlags: rofiFlags, List: &animeNames, Label: "Anime seç "})
+	selectedAnimeName, err := ui.SelectionList(internal.UiParams{Mode: "tui", RofiFlags: nil, List: &animeNames, Label: "Anime seç "})
 	if err != nil {
 		logger.LogError(err)
 		return
@@ -913,8 +1068,8 @@ func handleAnimeSearch(uiMode string, rofiFlags *string, logger *utils.Logger, f
 		}
 
 		option, err := ui.SelectionList(internal.UiParams{
-			Mode:      uiMode,
-			RofiFlags: rofiFlags,
+			Mode:      "tui",
+			RofiFlags: nil,
 			List:      &watchMenu,
 			Label:     selectedAnimeName,
 		})
@@ -1007,8 +1162,8 @@ func handleAnimeSearch(uiMode string, rofiFlags *string, logger *utils.Logger, f
 
 			labels := data["labels"].([]string)
 			selected, err := ui.SelectionList(internal.UiParams{
-				Mode:      uiMode,
-				RofiFlags: rofiFlags,
+				Mode:      "tui",
+				RofiFlags: nil,
 				List:      &labels,
 				Label:     "Çözünürlük seç ",
 			})
@@ -1021,8 +1176,8 @@ func handleAnimeSearch(uiMode string, rofiFlags *string, logger *utils.Logger, f
 
 		case "Bölüm seç":
 			selected, err := ui.SelectionList(internal.UiParams{
-				Mode:      uiMode,
-				RofiFlags: rofiFlags,
+				Mode:      "tui",
+				RofiFlags: nil,
 				List:      &episodeNames,
 				Label:     "Bölüm seç ",
 			})
