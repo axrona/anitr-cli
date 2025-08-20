@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -30,7 +31,11 @@ func SelectionList(params internal.UiParams) (string, error) {
 
 	response, err := tui.SelectionList(params)
 	if err != nil {
-		return "", fmt.Errorf("tui seçim listesi oluşturulamadı: %w", err)
+		if !errors.Is(err, tui.ErrQuit) {
+			return "", fmt.Errorf("tui seçim listesi oluşturulamadı: %w", err)
+		} else {
+			os.Exit(1)
+		}
 	}
 	return response, nil
 }
@@ -48,7 +53,44 @@ func InputFromUser(params internal.UiParams) (string, error) {
 
 	response, err := tui.InputFromUser(params)
 	if err != nil {
-		return "", fmt.Errorf("tui kullanıcı girişi alınamadı: %w", err)
+		if !errors.Is(err, tui.ErrQuit) {
+			return "", fmt.Errorf("tui kullanıcı girişi alınamadı: %w", err)
+		} else {
+			os.Exit(1)
+		}
 	}
 	return response, nil
+}
+
+// Kullanıcıya checkbox gösterir. Rofi ile nasıl yapacağımı bilmediğimden olduğu gibi bıraktım
+func MultiSelectList(params internal.UiParams) ([]string, error) {
+	if params.Mode == "rofi" {
+		response, err := rofi.SelectionList(params)
+		if err != nil {
+			return []string{}, fmt.Errorf("rofi seçim listesi oluşturulamadı: %w", err)
+		}
+		return []string{response}, nil
+	}
+
+	response, err := tui.MultiSelectList(params)
+	if err != nil {
+		if !errors.Is(err, tui.ErrQuit) {
+			return []string{}, fmt.Errorf("tui checkbox listesi oluşturulamadı: %w", err)
+		} else {
+			os.Exit(1)
+		}
+	}
+	return response, nil
+}
+
+// Hata gösterir
+func ShowError(params internal.UiParams, message string) {
+	if params.Mode == "rofi" {
+		err := rofi.ShowErrorBox(message)
+		if err != nil {
+			fmt.Printf("❌ Hata: %s\n", message)
+		}
+	} else {
+		tui.ShowErrorBox(message)
+	}
 }

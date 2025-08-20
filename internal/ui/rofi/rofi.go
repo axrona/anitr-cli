@@ -93,3 +93,20 @@ func InputFromUser(params internal.UiParams) (string, error) {
 	resp := strings.TrimSpace(string(out))
 	return resp, nil
 }
+
+// Hatayı gösterir
+func ShowErrorBox(message string) error {
+	fullMessage := "❌ Hata: " + message + "\n"
+
+	// rofi ile göster
+	cmd := exec.Command("rofi", "-dmenu", "-p", "Hata Mesajı", "-mesg", fullMessage)
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("rofi çalıştırılamadı: %w", err)
+	}
+
+	return nil
+}
