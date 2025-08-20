@@ -477,6 +477,10 @@ func playAnimeLoop(
 	selectedResolution := ""
 	selectedResolutionIdx := 0
 
+	if lastEpisodeIdx, err := utils.GetLastEpisodeIndex(source.Source(), selectedAnimeName); err == nil && lastEpisodeIdx >= 0 && len(episodes) > lastEpisodeIdx+1 {
+		// Eğer daha önce izlenmişse bir sonraki bölüm
+		selectedEpisodeIndex = lastEpisodeIdx + 1
+	}
 	// Discord RPC için giriş yap
 	loggedIn, err := rpc.ClientLogin()
 	if err != nil || !loggedIn {
@@ -608,10 +612,12 @@ func playAnimeLoop(
 				return source, selectedSource
 			}
 
-			// Discord RPC'yi başlat
 			if !disableRPC {
 				go updateDiscordRPC(socketPath, episodeNames, selectedEpisodeIndex, selectedAnimeName, selectedSource, posterURL, logger, &loggedIn)
 			}
+
+			// History güncelleme için goroutine
+			go utils.UpdateAnimeHistory(socketPath, source.Source(), selectedAnimeName, "lastEpisodeIdx", selectedEpisodeIndex, logger)
 
 			// Oynatma işlemi tamamlanana kadar bekle
 			err = cmd.Wait()
@@ -796,7 +802,7 @@ func playAnimeLoop(
 					fmt.Printf("\033[31m[!] %s için URL bulunamadı.\033[0m\n", ep.Title)
 					continue
 				}
-				err := downloader.Download(selectedAnimeName, ep.Title, url)
+				err := downloader.Download(source.Source(), selectedAnimeName, ep.Title, url)
 				if err != nil {
 					fmt.Printf("\033[31m[!] %s indirilemedi: %s\033[0m\n", ep.Title, err)
 				}
