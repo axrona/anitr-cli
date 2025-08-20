@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"sort"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/xeyossr/anitr-cli/internal"
+	"github.com/xeyossr/anitr-cli/internal/dl"
 	"github.com/xeyossr/anitr-cli/internal/flags"
 	"github.com/xeyossr/anitr-cli/internal/models"
 	"github.com/xeyossr/anitr-cli/internal/player"
@@ -206,6 +209,61 @@ func updateWatchAPI(
 	}, fansubData, nil
 }
 
+// getSelectedEpisodesLinks, seçilen bölümlerin sadece seçilmiş çözünürlük URL'lerini döner
+func getSelectedEpidodesLinks(
+	source string,
+	episodes []models.Episode,
+	selectedFansubIndex int,
+	isMovie bool,
+	slug *string,
+	selectedResolution string, // kullanıcı seçimi: "720p", "1080p", vb.
+	selectedAnimeID int,
+) (map[string]string, error) {
+	// result[episodeTitle] = url
+	result := make(map[string]string)
+
+	for _, ep := range episodes {
+		// updateWatchAPI ile tek bölüm için veriyi al
+		data, _, err := updateWatchAPI(
+			source,
+			[]models.Episode{ep}, // tek bölüm
+			0,                    // index 0 çünkü slice sadece 1 eleman
+			selectedAnimeID,
+			0, // sezon index kullanılacaksa güncellenebilir
+			selectedFansubIndex,
+			isMovie,
+			slug,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("[%s] updateWatchAPI hatası: %w", ep.Title, err)
+		}
+
+		labelsIface, ok := data["labels"].([]string)
+		urlsIface, ok := data["urls"].([]string)
+		if !ok {
+			return nil, fmt.Errorf("[%s] labels veya urls bulunamadı", ep.Title)
+		}
+		labels := labelsIface
+		urls := urlsIface
+
+		// seçilen çözünürlük için index bul
+		resolutionIdx := 0
+		for i, label := range labels {
+			if label == selectedResolution {
+				resolutionIdx = i
+				break
+			}
+		}
+		if resolutionIdx >= len(urls) {
+			resolutionIdx = len(urls) - 1
+		}
+
+		result[ep.Title] = urls[resolutionIdx]
+	}
+
+	return result, nil
+}
+
 // --- UI ve kullanıcı etkileşimi fonksiyonları ---
 
 // Kullanıcıdan kaynak seçmesini isteyen fonksiyon
@@ -219,7 +277,10 @@ func selectSource(uiMode string, rofiFlags string, logger *utils.Logger) (string
 
 		// Kullanıcıdan seçim al
 		selectedSource, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, sourceList, "Kaynak seç ")
-		utils.FailIfErr(err, logger)
+		utils.FailIfErr(internal.UiParams{
+			Mode:      uiMode,
+			RofiFlags: &rofiFlags,
+		}, err, logger)
 
 		// Seçilen kaynağa göre uygun AnimeSource objesini ayarla
 		var source models.AnimeSource
@@ -243,12 +304,27 @@ func searchAnime(source models.AnimeSource, uiMode string, rofiFlags string, log
 	for {
 		// Kullanıcıdan arama kelimesi al
 		query, err := ui.InputFromUser(internal.UiParams{Mode: uiMode, RofiFlags: &rofiFlags, Label: "Anime ara "})
-		utils.FailIfErr(err, logger)
+		utils.FailIfErr(internal.UiParams{
+			Mode:      uiMode,
+			RofiFlags: &rofiFlags,
+		}, err, logger)
 
 		// API üzerinden arama yap
 		searchData, err := source.GetSearchData(query)
-		utils.FailIfErr(err, logger)
+		if err != nil {
+			ui.ShowError(internal.UiParams{
+				Mode:      uiMode,
+				RofiFlags: &rofiFlags,
+			}, fmt.Sprintf(
+				"%s kaynağına erişilemedi."+"\n\n"+
+					"Olası nedenler:\n"+
+					"1. VPN açık olabilir\n"+
+					"2. Proxy ayarlarından kaynaklı olabilir\n"+
+					"3. İnternete bağlı olmayabilirsiniz\n"+
+					"4. Bunların hiçbiri değilse API taşınmış olabilir, lütfen GitHub'da issue açarak hatayı bize bildirin.", source.Source()))
 
+			os.Exit(1)
+		}
 		// Hiç sonuç çıkmazsa kullanıcıyı bilgilendir
 		if searchData == nil {
 			fmt.Printf("\033[31m[!] Arama sonucu bulunamadı!\033[0m")
@@ -287,7 +363,10 @@ func selectAnime(animeNames []string, searchData []models.Anime, uiMode string, 
 
 		// Kullanıcıdan anime seçimi al
 		selectedAnimeName, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, animeNames, "Anime seç ")
-		utils.FailIfErr(err, logger)
+		utils.FailIfErr(internal.UiParams{
+			Mode:      uiMode,
+			RofiFlags: &rofiFlags,
+		}, err, logger)
 
 		// Geçerli bir anime ismi mi kontrol et
 		if !slices.Contains(animeNames, selectedAnimeName) {
@@ -410,14 +489,24 @@ func playAnimeLoop(
 		// Kullanıcıya sunulacak menü seçenekleri
 		watchMenu := []string{}
 		if !isMovie {
-			watchMenu = append(watchMenu, "İzle", "Sonraki bölüm", "Önceki bölüm", "Bölüm seç", "Çözünürlük seç")
+			watchMenu = append(watchMenu, "İzle", "Sonraki bölüm", "Önceki bölüm", "Bölüm seç", "Çözünürlük seç", "Bölüm indir")
 		} else {
-			watchMenu = append(watchMenu, "İzle", "Çözünürlük seç")
+			watchMenu = append(watchMenu, "İzle", "Çözünürlük seç", "Movie indir")
 		}
 
 		// OpenAnime için fansub seçimi
 		if strings.ToLower(selectedSource) == "openanime" {
-			watchMenu = append(watchMenu, "Fansub seç")
+			idx := -1
+			for i, v := range watchMenu {
+				if v == "Bölüm indir" || v == "Movie indir" {
+					idx = i
+					break
+				}
+			}
+
+			if idx != -1 {
+				watchMenu = append(watchMenu[:idx], append([]string{"Fansub seç"}, watchMenu[idx:]...)...)
+			}
 		}
 
 		// Genel seçenekler
@@ -425,7 +514,10 @@ func playAnimeLoop(
 
 		// Seçim arayüzünü göster
 		option, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, watchMenu, selectedAnimeName)
-		utils.FailIfErr(err, logger)
+		utils.FailIfErr(internal.UiParams{
+			Mode:      uiMode,
+			RofiFlags: &rofiFlags,
+		}, err, logger)
 
 		switch option {
 
@@ -494,7 +586,10 @@ func playAnimeLoop(
 				SubtitleUrl: &subtitle,
 				Title:       mpvTitle,
 			})
-			if !utils.CheckErr(err, logger) {
+			if !utils.CheckErr(internal.UiParams{
+				Mode:      uiMode,
+				RofiFlags: &rofiFlags,
+			}, err, logger) {
 				return source, selectedSource
 			}
 
@@ -543,7 +638,10 @@ func playAnimeLoop(
 			}
 			labels := data["labels"].([]string)
 			selected, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, labels, "Çözünürlük seç ")
-			if !utils.CheckErr(err, logger) {
+			if !utils.CheckErr(internal.UiParams{
+				Mode:      uiMode,
+				RofiFlags: &rofiFlags,
+			}, err, logger) {
 				continue
 			}
 			selectedResolution = selected
@@ -557,7 +655,10 @@ func playAnimeLoop(
 		// Bölüm seçimi
 		case "Bölüm seç":
 			selected, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, episodeNames, "Bölüm seç ")
-			if !utils.CheckErr(err, logger) {
+			if !utils.CheckErr(internal.UiParams{
+				Mode:      uiMode,
+				RofiFlags: &rofiFlags,
+			}, err, logger) {
 				continue
 			}
 			if slices.Contains(episodeNames, selected) {
@@ -589,7 +690,6 @@ func playAnimeLoop(
 				isMovie,
 				&selectedAnimeSlug,
 			)
-
 			if err != nil {
 				fmt.Printf("\033[31m[!] Fansublar yüklenemedi.\033[0m\n")
 				time.Sleep(1000 * time.Millisecond)
@@ -603,7 +703,10 @@ func playAnimeLoop(
 			}
 
 			selected, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, fansubNames, "Fansub seç ")
-			if !utils.CheckErr(err, logger) {
+			if !utils.CheckErr(internal.UiParams{
+				Mode:      uiMode,
+				RofiFlags: &rofiFlags,
+			}, err, logger) {
 				continue
 			}
 
@@ -613,6 +716,91 @@ func playAnimeLoop(
 				continue
 			}
 			selectedFansubIdx = slices.Index(fansubNames, selected)
+
+		// Movie / Bölüm indir
+		case "Bölüm indir", "Movie indir":
+			ui.ClearScreen()
+
+			downloader, err := dl.NewDownloader(filepath.Join(utils.VideosDir(), "anitr-cli"))
+			if err != nil {
+				switch {
+				case errors.Is(err, dl.ErrNoDownloader):
+					fmt.Printf("\033[31m[!] yt-dlp veya youtube-dl bulunamadı\033[0m\n")
+				case errors.Is(err, dl.ErrDirCreate):
+					fmt.Printf("\033[31m[!] Klasör oluşturulamadı: %v\033[0m\n", err)
+				default:
+					fmt.Printf("\033[31m[!] Hata: %v\033[0m\n", err)
+				}
+				time.Sleep(1500 * time.Millisecond)
+				continue
+			}
+
+			var choices []string
+
+			if option == "Bölüm indir" {
+				choices, err = ui.MultiSelectList(internal.UiParams{
+					Mode:      uiMode,
+					List:      &episodeNames,
+					RofiFlags: &rofiFlags,
+					Label:     "Bölüm seç ",
+				})
+				if err != nil {
+					fmt.Printf("\033[31m[!] Seçim listesi oluşturulamadı: %s\033[0m\n", err)
+					time.Sleep(1500 * time.Millisecond)
+					continue
+				}
+			} else {
+				// Movie ise zaten tek bölüm
+				choices = []string{episodeNames[0]}
+			}
+
+			// Seçilen bölümleri filtrele
+			selectedEpisodes := make([]models.Episode, 0, len(choices))
+			episodeNameSet := make(map[string]struct{}, len(choices))
+
+			for _, c := range choices {
+				episodeNameSet[c] = struct{}{}
+			}
+
+			for _, ep := range episodes {
+				if _, ok := episodeNameSet[ep.Title]; ok {
+					selectedEpisodes = append(selectedEpisodes, ep)
+				}
+			}
+
+			// Güncel sezon bilgisi
+			if len(selectedEpisodes) > 0 {
+				selectedSeasonIndex = int(selectedEpisodes[0].Extra["season_num"].(float64)) - 1
+			}
+
+			// Seçilen çözünürlüğe göre tüm bölümlerin URL'lerini al
+			links, err := getSelectedEpidodesLinks(
+				strings.ToLower(selectedSource),
+				selectedEpisodes,
+				selectedFansubIdx,
+				isMovie,
+				&selectedAnimeSlug,
+				selectedResolution,
+				selectedAnimeID,
+			)
+			if err != nil {
+				fmt.Printf("\033[31m[!] Bölüm URL'leri alınamadı: %s\033[0m\n", err)
+				time.Sleep(1500 * time.Millisecond)
+				continue
+			}
+
+			// Downloader ile indirme işlemi
+			for _, ep := range selectedEpisodes {
+				url, ok := links[ep.Title]
+				if !ok {
+					fmt.Printf("\033[31m[!] %s için URL bulunamadı.\033[0m\n", ep.Title)
+					continue
+				}
+				err := downloader.Download(selectedAnimeName, ep.Title, url)
+				if err != nil {
+					fmt.Printf("\033[31m[!] %s indirilemedi: %s\033[0m\n", ep.Title, err)
+				}
+			}
 
 		// Yeni bir anime aramak için menü
 		case "Anime ara":
@@ -663,35 +851,20 @@ func updateDiscordRPC(socketPath string, episodeNames []string, selectedEpisodeI
 		}
 
 		// MPV'nin duraklatma durumunu al
-		isPaused, err := player.GetMPVPausedStatus(socketPath)
-		if err != nil {
-			// Hata durumunda log kaydederiz
-			logger.LogError(fmt.Errorf("pause durumu alınamadı: %w", err))
-			continue
-		}
+		isPaused, _ := player.GetMPVPausedStatus(socketPath)
 
 		// MPV'nin toplam süresini al
-		durationVal, err := player.MPVSendCommand(socketPath, []interface{}{"get_property", "duration"})
-		if err != nil {
-			// Hata durumunda log kaydederiz
-			logger.LogError(fmt.Errorf("süre alınamadı: %w", err))
-			continue
-		}
+		durationVal, _ := player.MPVSendCommand(socketPath, []interface{}{"get_property", "duration"})
 
 		// MPV'nin geçerli zamanını al
-		timePosVal, err := player.MPVSendCommand(socketPath, []interface{}{"get_property", "time-pos"})
-		if err != nil {
-			// Hata durumunda log kaydederiz
-			logger.LogError(fmt.Errorf("konum alınamadı: %w", err))
-			continue
-		}
+		timePosVal, _ := player.MPVSendCommand(socketPath, []interface{}{"get_property", "time-pos"})
 
 		// Süre ve zaman konumunu doğru türdeki verilere dönüştür
 		duration, ok1 := durationVal.(float64)
 		timePos, ok2 := timePosVal.(float64)
 		if !ok1 || !ok2 {
 			// Eğer süre veya zaman konumu uygun formatta değilse hata loglanır
-			logger.LogError(fmt.Errorf("süre veya zaman konumu parse edilemedi"))
+			fmt.Println("süre veya zaman konumu parse edilemedi")
 			continue
 		}
 
@@ -777,7 +950,6 @@ func app(cfx *App) error {
 		episodes, episodeNames, isMovie, selectedSeasonIndex, err := getEpisodesAndNames(
 			*cfx.source, isMovie, selectedAnimeID, selectedAnimeSlug, selectedAnime.Title, cfx.logger,
 		)
-
 		// Hata durumunda kullanıcıya seçenek sunulur
 		if err != nil {
 			cfx.logger.LogError(err)
