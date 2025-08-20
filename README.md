@@ -68,19 +68,22 @@ make install-linux
 - **Debian/Ubuntu:**
   ```bash
   sudo apt update
-  sudo apt install golang git make mpv rofi
+  sudo apt install golang git make mpv rofi yt-dlp
   ```
+  > [!WARNING]
+  > Debian repolarında Go sürümü 1.23'den eski olabilir. Bu yüzden snap ile (`sudo snap install go --classic`) ya da manuel kurulum gerekebilir.
+  
 - **Arch/Manjaro:**
   ```bash
-  sudo pacman -S go git make mpv rofi
+  sudo pacman -S go git make mpv rofi yt-dlp
   ```
 - **Fedora:**
   ```bash
-  sudo dnf install golang git make mpv rofi
+  sudo dnf install golang git make mpv rofi yt-dlp
   ```
 - **openSUSE:**
   ```bash
-  sudo zypper install go git make mpv rofi
+  sudo zypper install go git make mpv rofi yt-dlp
   ```
 
 ## 🪟 Windows
