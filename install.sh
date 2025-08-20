@@ -35,6 +35,11 @@ else
     echo "⚠️ Tag bulunamadı, 'main' dalı kullanılacak."
 fi
 
+echo "🧹 Go modülleri düzenleniyor ve kod formatlanıyor..."
+export GOFLAGS="-mod=mod"
+go mod tidy
+go fmt ./...
+
 echo "⚙️ Derleniyor ve kuruluyor..."
 
 if [[ "$HAS_MAKE" -eq 1 ]]; then
