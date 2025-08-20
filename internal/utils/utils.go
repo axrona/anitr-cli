@@ -10,9 +10,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/xeyossr/anitr-cli/internal"
+	"github.com/xeyossr/anitr-cli/internal/ui"
 )
 
-// Kullanıcının çıkış talebini temsil eden özel bir hata.
 var ErrQuit = errors.New("quit requested")
 
 // Logger, hata ve mesajları bir dosyaya yazmak için yapılandırılmış bir log yapısıdır.
@@ -72,7 +74,7 @@ func NewLogger() (*Logger, error) {
 	tempDir := getTempDir()
 	logPath := filepath.Join(tempDir, "anitr-cli.log")
 
-	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("log dosyası açılamadı: %w", err)
 	}
@@ -92,6 +94,7 @@ func (l *Logger) LogError(err error) {
 	if err == nil {
 		return
 	}
+
 	l.Log.Printf("[ERROR] %v\n", err)
 }
 
@@ -106,28 +109,28 @@ func (l *Logger) Close() error {
 }
 
 // FailIfErr, kritik hatalarda loglar, kullanıcıyı bilgilendirir ve uygulamayı kapatır.
-func FailIfErr(err error, logger *Logger) {
+func FailIfErr(params internal.UiParams, err error, logger *Logger) {
 	if err != nil {
 		if errors.Is(err, ErrQuit) {
 			os.Exit(0)
 		}
 
 		logger.LogError(err)
-		logger.LogMsg("\033[31mKritik hata: %v\033[0m\n", err)
+		ui.ShowError(params, fmt.Sprint(err))
 		logger.Close()
 		os.Exit(1)
 	}
 }
 
 // CheckErr, hata varsa loglar, ekranda gösterir ve kullanıcıdan devam için giriş bekler.
-func CheckErr(err error, logger *Logger) bool {
+func CheckErr(params internal.UiParams, err error, logger *Logger) bool {
 	if err != nil {
 		if errors.Is(err, ErrQuit) {
 			os.Exit(0)
 		}
 
 		logger.LogError(err)
-		fmt.Printf("\n\033[31mHata oluştu: %v\033[0m\nLog detayları: %s\nDevam etmek için bir tuşa basın...\n", err, logger.File.Name())
+		ui.ShowError(params, fmt.Sprint(err))
 		fmt.Scanln()
 		return false
 	}
@@ -161,14 +164,25 @@ func NormalizeTurkishToASCII(input string) string {
 	return replacer.Replace(input)
 }
 
-// PrintError, verilen hatayı terminale kırmızı renkte yazdırır.
-func PrintError(err error) {
-	if err != nil {
-		fmt.Printf("\033[31mHata: %v\033[0m\n", err)
-	}
-}
-
 // Ptr, verilen değerin pointer'ını döner (herhangi bir tip için).
 func Ptr[T any](val T) *T {
 	return &val
+}
+
+func VideosDir() string {
+	if runtime.GOOS == "windows" {
+		// Kullanıcı profil dizini → %USERPROFILE%
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			userProfile = "." // fallback
+		}
+		return filepath.Join(userProfile, "Videos")
+	} else {
+		// Linux / Mac
+		home := os.Getenv("HOME")
+		if home == "" {
+			home = "."
+		}
+		return filepath.Join(home, "Videos")
+	}
 }
