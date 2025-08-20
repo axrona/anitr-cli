@@ -23,7 +23,9 @@
 - **Cross-Platform**: Linux, Windows ve macOS üzerinde çalışabilir.
 - **AnimeCix ve OpenAnime Entegrasyonu**: Popüler anime platformlarından hızlı arama ve izleme imkanı.
 - **Fansub Seçimi**: OpenAnime üzerinden izlerken favori çeviri grubunuzu seçme özgürlüğü.
+- **Bölüm Takibi**: İzlediğiniz animenin en son bölümünü hatırlayarak bir sonraki bölümden başlar.
 - **Çoklu Arayüz Desteği**: Terminal tabanlı TUI ve minimalist grafik arayüz (Rofi UI) seçenekleri.
+- **Anime İndirme Özelliği**: İzlediğiniz animeleri cihazınıza indirip çevrimdışı izleme imkanı.
 - **Discord Rich Presence**: İzlediğiniz animeyi Discord profilinizde paylaşın.
 - **Otomatik Güncelleme Kontrolü**: Uygulama her başlatıldığında yeni sürüm olup olmadığını kontrol eder.
 
@@ -59,7 +61,7 @@ make install-linux
 > **Gereksinimler:**  
 > Derleme: `go`, `git`, `make`  
 > Kullanım: `mpv`  
-> İsteğe bağlı: `rofi` (Rofi arayüzü için)
+> İsteğe bağlı: `rofi` (Rofi arayüzü için), `youtube-dl`/`yt-dlp` (Bölüm indirme özelliği için)
 
 **Paketleri yüklemek için:**
 
@@ -91,6 +93,7 @@ make install-linux
 3. `C:\Program Files\anitr-cli` klasörünü oluşturun.
 4. `anitr-cli.exe` dosyasını bu klasöre taşıyın.
 5. PATH’e `C:\Program Files\anitr-cli` ekleyin.
+6. Anime indirebilmek için [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases/latest) veya [youtube-dl](https://github.com/ytdl-org/youtube-dl/releases) indirin ve PATH'e ekleyin. (Opsiyonel)
 
 Artık **cmd** veya **PowerShell** içinde anitr-cli çalıştırabilirsiniz.
 
@@ -106,6 +109,18 @@ git clone https://github.com/xeyossr/anitr-cli.git
 cd anitr-cli
 git fetch --tags
 make install-macos
+```
+
+Anime indirebilmek için [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases/latest) veya [youtube-dl](https://github.com/ytdl-org/youtube-dl/releases) yüklemeniz gerekmektedir:
+
+```bash
+brew install yt-dlp
+```
+
+ya da 
+
+```bash
+brew install youtube-dl
 ```
 
 ---
