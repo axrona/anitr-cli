@@ -64,14 +64,15 @@ make install-linux
 > İsteğe bağlı: `rofi` (Rofi arayüzü için), `youtube-dl`/`yt-dlp` (Bölüm indirme özelliği için)
 
 **Paketleri yüklemek için:**
+> [!WARNING]   
+> Debian repolarında Go sürümü 1.23'den eski olabilir. Bu yüzden snap ile (`sudo snap install go --classic`) ya da manuel kurulum gerekebilir.
 
 - **Debian/Ubuntu:**
   ```bash
   sudo apt update
   sudo apt install golang git make mpv rofi yt-dlp
   ```
-  > [!WARNING]
-  > Debian repolarında Go sürümü 1.23'den eski olabilir. Bu yüzden snap ile (`sudo snap install go --classic`) ya da manuel kurulum gerekebilir.
+
   
 - **Arch/Manjaro:**
   ```bash
