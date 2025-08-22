@@ -411,14 +411,22 @@ func anitrHistory(params internal.UiParams, source string, historyLimit int, log
 
 	animeHistory, readErr := utils.ReadAnimeHistory()
 	if readErr != nil {
-		logger.LogError(fmt.Errorf("Geçmiş okunamadı: %s", readErr))
-		err = readErr
+		close(done)      // spinner'ı kapat
+		ui.ClearScreen() // ekranı temizle
+		err = fmt.Errorf("Geçmiş bulunamadı")
+		fmt.Printf("\033[31m[!] %s\033[0m\n", err.Error())
+		logger.LogError(err)
+		time.Sleep(1500 * time.Millisecond)
 		return
 	}
 
 	sourceData, ok := animeHistory[source]
 	if !ok || len(sourceData) == 0 {
+		close(done)      // spinner'ı kapat
+		ui.ClearScreen() // ekranı temizle
 		err = fmt.Errorf("Bu kaynak için geçmiş bulunamadı")
+		fmt.Printf("\033[31m[!] %s\033[0m\n", err.Error())
+		time.Sleep(1500 * time.Millisecond)
 		return
 	}
 
@@ -1406,19 +1414,15 @@ func runMain(cmd *cobra.Command, f *flags.Flags, uiMode string, logger *utils.Lo
 
 	// Uygulama durumunu başlat
 	currentApp := &App{
-		source:         nil,
-		selectedSource: utils.Ptr(""),
+		source:         utils.Ptr(models.AnimeSource(openanime.OpenAnime{})),
+		selectedSource: utils.Ptr("OpenAnime"),
 		uiMode:         &uiMode,
 		rofiFlags:      &f.RofiFlags,
-		disableRPC:     nil, // Daha sonra değer alacak
+		disableRPC:     &disableRPC,
 		animeHistory:   &animeHistory,
 		historyLimit:   0,
 		logger:         logger,
 	}
-
-	// Varsayılan kaynak
-	currentApp.source = utils.Ptr(models.AnimeSource(openanime.OpenAnime{}))
-	currentApp.selectedSource = utils.Ptr("OpenAnime")
 
 	// Configi yükle
 	cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
