@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/xeyossr/anitr-cli/internal"
@@ -38,7 +39,7 @@ type VideoResponse struct {
 
 // Source, AnimeCix kaynağının adını döner
 func (a AnimeCix) Source() string {
-	return "animecix"
+	return "AnimeciX"
 }
 
 // GetSearchData, verilen sorguya göre anime verilerini döner
@@ -93,6 +94,43 @@ func (a AnimeCix) GetSearchData(query string) ([]models.Anime, error) {
 	}
 
 	return returnData, nil
+}
+
+// GetAnimeByID, verilen ID'ye göre tek anime verisini döner
+func (a AnimeCix) GetAnimeByID(idstr string) (*models.Anime, error) {
+	id, err := strconv.Atoi(idstr)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%ssecure/titles/%d?titleId=%d", configAnimecix.BaseUrl, id, id)
+	data, err := internal.GetJson(url, configAnimecix.HttpHeaders)
+	if err != nil {
+		return nil, fmt.Errorf("anime verisi alınamadı: %w", err)
+	}
+
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("data verisi beklenen formatta değil")
+	}
+
+	titleMap, ok := dataMap["title"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("'title' verisi yok veya beklenen formatta değil")
+	}
+
+	name, _ := titleMap["name"].(string)
+	animeType, _ := titleMap["type"].(string)
+	titleType, _ := titleMap["title_type"].(string)
+	poster, _ := titleMap["poster"].(string)
+
+	return &models.Anime{
+		ID:        &id,
+		Title:     name,
+		Type:      &animeType,
+		TitleType: &titleType,
+		ImageURL:  poster,
+	}, nil
 }
 
 // GetSeasonsData, anime için sezon bilgilerini döner
@@ -232,7 +270,6 @@ func FetchAnimeSearchData(query string) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%ssecure/search/%s?type=&limit=20", configAnimecix.BaseUrl, query)
 	// JSON verisini al
 	data, err := internal.GetJson(url, configAnimecix.HttpHeaders)
-
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +359,6 @@ func FetchAnimeEpisodesData(id int) ([]map[string]interface{}, error) {
 	var episodes []map[string]interface{}
 	seenEpisodes := make(map[string]bool)
 	seasons, err := FetchAnimeSeasonsData(id)
-
 	if err != nil {
 		return nil, fmt.Errorf("sezon verileri alınamadı: %w", err)
 	}
@@ -331,7 +367,6 @@ func FetchAnimeEpisodesData(id int) ([]map[string]interface{}, error) {
 	for _, seasonIndex := range seasons {
 		url := fmt.Sprintf("%ssecure/related-videos?episode=1&season=%d&titleId=%d&videoId=637113", configAnimecix.AlternativeUrl, seasonIndex+1, id)
 		data, err := internal.GetJson(url, configAnimecix.HttpHeaders)
-
 		if err != nil {
 			return nil, fmt.Errorf("bölüm verileri alınamadı: %w", err)
 		}

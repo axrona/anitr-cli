@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -40,35 +39,6 @@ func getTempDir() string {
 	return "/tmp"
 }
 
-// GetImage, verilen URL'den bir görsel indirir ve geçici bir dosyaya kaydeder.
-func GetImage(url string) (string, error) {
-	tempDir := getTempDir()
-	tempPath := filepath.Join(tempDir, "poster.png")
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", fmt.Errorf("görsel indirilemedi: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("görsel isteğine başarısız yanıt: %s", resp.Status)
-	}
-
-	out, err := os.Create(tempPath)
-	if err != nil {
-		return "", fmt.Errorf("geçici dosya oluşturulamadı: %w", err)
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("görsel yazılamadı: %w", err)
-	}
-
-	return tempPath, nil
-}
-
 // NewLogger, işletim sistemine göre uygun dizinde bir log dosyası oluşturur ve Logger döner.
 func NewLogger() (*Logger, error) {
 	tempDir := getTempDir()
@@ -86,8 +56,6 @@ func NewLogger() (*Logger, error) {
 		Log:  logger,
 	}, nil
 }
-
-// ... diğer fonksiyonlar değişmeden kalabilir ...
 
 // LogError, hata objesini loglar (nil ise işlem yapılmaz).
 func (l *Logger) LogError(err error) {
@@ -169,6 +137,7 @@ func Ptr[T any](val T) *T {
 	return &val
 }
 
+// VideosDir, platforma göre Videos klasörünü döner
 func VideosDir() string {
 	if runtime.GOOS == "windows" {
 		// Kullanıcı profil dizini → %USERPROFILE%
@@ -184,5 +153,29 @@ func VideosDir() string {
 			home = "."
 		}
 		return filepath.Join(home, "Videos")
+	}
+}
+
+// ConfigDir platforma göre config dizinini döner
+func ConfigDir() string {
+	if runtime.GOOS == "windows" {
+		// Windows → %APPDATA%\AnitrCLI
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			// fallback → USERPROFILE\AppData\Roaming
+			userProfile := os.Getenv("USERPROFILE")
+			if userProfile == "" {
+				userProfile = "."
+			}
+			appData = filepath.Join(userProfile, "AppData", "Roaming")
+		}
+		return filepath.Join(appData, "AnitrCLI")
+	} else {
+		// Linux / Mac → ~/.anitr-cli
+		home := os.Getenv("HOME")
+		if home == "" {
+			home = "."
+		}
+		return filepath.Join(home, ".anitr-cli")
 	}
 }

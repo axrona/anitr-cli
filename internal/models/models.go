@@ -5,6 +5,8 @@ package models
 type AnimeSource interface {
 	// Arama sorgusuna göre anime verilerini getirir.
 	GetSearchData(query string) ([]Anime, error)
+	// Id/Slug ile anime verisini getirir.
+	GetAnimeByID(id string) (*Anime, error)
 	// Sezon verilerini getirir.
 	GetSeasonsData(params SeasonParams) ([]Season, error)
 	// Bölüm verilerini getirir.

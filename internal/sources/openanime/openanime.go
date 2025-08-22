@@ -20,7 +20,7 @@ var configOpenAnime = internal.Config{
 
 // Source, OpenAnime kaynağının adını döner
 func (o OpenAnime) Source() string {
-	return "openanime"
+	return "OpenAnime"
 }
 
 // GetSearchData, verilen sorguya göre anime verilerini döner
@@ -70,6 +70,37 @@ func (o OpenAnime) GetSearchData(query string) ([]models.Anime, error) {
 	}
 
 	return returnData, nil
+}
+
+// GetAnimeById, doğrudan slug üzerinden anime verilerini döner
+func (o OpenAnime) GetAnimeByID(slug string) (*models.Anime, error) {
+	url := fmt.Sprintf("%s/anime/%s", configOpenAnime.BaseUrl, slug)
+	data, err := internal.GetJson(url, configOpenAnime.HttpHeaders)
+	if err != nil {
+		return nil, fmt.Errorf("slug verileri alınamadı: %w", err)
+	}
+
+	animeData, ok := data.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("geçersiz anime veri formatı")
+	}
+
+	name, ok := animeData["english"].(string)
+	if !ok {
+		name = ""
+	}
+
+	poster, ok := animeData["pictures"].(map[string]interface{})["avatar"].(string)
+	if !ok {
+		poster = ""
+	}
+
+	return &models.Anime{
+		Slug:     &slug,
+		Title:    name,
+		Source:   "openanime",
+		ImageURL: poster,
+	}, nil
 }
 
 // GetSeasonsData, anime için sezon verilerini döner

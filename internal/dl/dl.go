@@ -40,9 +40,9 @@ func NewDownloader(baseDir string) (*Downloader, error) {
 }
 
 // Download -> anime adı + bölüm + url alır, dosyayı indirir
-func (d *Downloader) Download(source, animeName, episode, url string) error {
-	// Çıkış klasörü: ~/Videos/anitr-cli/source/animeName
-	// örnek: ~/Videos/anitr-cli/openanime/Bungo Stray Dogs
+func (d *Downloader) Download(source, animeName, url string, episodeNumber, seasonNumber int) error {
+	// Çıkış klasörü: ~/Videos/anitr-cli/source/animeName/SxxExx.ext
+	// örnek: ~/Videos/anitr-cli/openanime/Bungo Stray Dogs/S04E09.mp4
 	outDir := filepath.Join(d.BaseDir, source, animeName)
 	err := os.MkdirAll(outDir, 0o755)
 	if err != nil {
@@ -50,7 +50,7 @@ func (d *Downloader) Download(source, animeName, episode, url string) error {
 	}
 
 	// Dosya adı formatı: AnimeName-Episode.mp4
-	outFile := filepath.Join(outDir, fmt.Sprintf("%s.%%(ext)s", episode))
+	outFile := filepath.Join(outDir, fmt.Sprintf("S%02dE%02d.%%(ext)s", seasonNumber, episodeNumber))
 
 	// Komutu çalıştır
 	cmd := exec.Command(d.BinPath, "-o", outFile, url)
