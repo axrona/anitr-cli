@@ -94,3 +94,10 @@ func ShowError(params internal.UiParams, message string) {
 		tui.ShowErrorBox(message)
 	}
 }
+
+// Spinner (rofiye yok tabi)
+func ShowLoading(params internal.UiParams, message string, done chan struct{}) {
+	if params.Mode == "tui" {
+		tui.ShowSpinner(message, done)
+	}
+}
