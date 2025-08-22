@@ -1416,6 +1416,10 @@ func runMain(cmd *cobra.Command, f *flags.Flags, uiMode string, logger *utils.Lo
 		logger:         logger,
 	}
 
+	// Varsayılan kaynak
+	currentApp.source = utils.Ptr(models.AnimeSource(openanime.OpenAnime{}))
+	currentApp.selectedSource = utils.Ptr("OpenAnime")
+
 	// Configi yükle
 	cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
 	if err == nil {
