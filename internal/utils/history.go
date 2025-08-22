@@ -11,10 +11,15 @@ import (
 	"github.com/xeyossr/anitr-cli/internal/player"
 )
 
-// AnimeHistoryEntry, history.json içindeki her anime için kullanılacak
-type AnimeHistoryEntry map[string]interface{}
+// AnimeHistoryEntry, her anime için tutulacak bilgiler
+type AnimeHistoryEntry struct {
+	LastEpisodeIdx  *int       `json:"lastEpisodeIdx"`
+	LastEpisodeName string     `json:"lastEpisodeName"`
+	AnimeId         *string    `json:"animeId"`
+	LastWatched     *time.Time `json:"lastWatched"`
+}
 
-// AnimeHistory, source -> anime adı -> alanlar
+// AnimeHistory, source -> anime adı -> struct
 type AnimeHistory map[string]map[string]AnimeHistoryEntry
 
 // getHistoryPath cross-platform olarak history.json yolunu döndürür
@@ -83,34 +88,8 @@ func WriteAnimeHistory(history AnimeHistory) error {
 	return nil
 }
 
-// GetLastEpisodeIndex, source ve anime adı ile son izlenen bölümü döndürür
-func GetLastEpisodeIndex(source, animeName string) (int, error) {
-	history, err := ReadAnimeHistory()
-	if err != nil {
-		return -1, err
-	}
-
-	sourceEntry, ok := history[source]
-	if !ok {
-		return -1, nil
-	}
-
-	animeEntry, ok := sourceEntry[animeName]
-	if !ok {
-		return -1, nil
-	}
-
-	if idx, ok := animeEntry["lastEpisodeIdx"]; ok {
-		if i, ok := idx.(float64); ok {
-			return int(i), nil
-		}
-	}
-
-	return -1, nil
-}
-
 // UpdateAnimeHistory, mevcut MPV oturumu sırasında animeyi history.json'a kaydeder
-func UpdateAnimeHistory(socketPath, source, animeName, key string, episodeIndex int, logger *Logger) {
+func UpdateAnimeHistory(socketPath, source, animeName, episodeName, animeId string, episodeIndex int, logger *Logger) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -150,10 +129,17 @@ func UpdateAnimeHistory(socketPath, source, animeName, key string, episodeIndex 
 
 			animeEntry, ok := sourceEntry[animeName]
 			if !ok {
-				animeEntry = make(AnimeHistoryEntry)
+				animeEntry = AnimeHistoryEntry{}
 			}
 
-			animeEntry[key] = episodeIndex
+			time := time.Now()
+
+			animeEntry = AnimeHistoryEntry{
+				LastEpisodeIdx:  &episodeIndex,
+				LastEpisodeName: episodeName,
+				AnimeId:         &animeId,
+				LastWatched:     &time,
+			}
 			sourceEntry[animeName] = animeEntry
 			history[source] = sourceEntry
 
