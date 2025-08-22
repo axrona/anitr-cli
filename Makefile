@@ -14,6 +14,9 @@ LDFLAGS=-ldflags="-X 'github.com/xeyossr/anitr-cli/internal/update.version=$(VER
 mod-tidy:
 	$(GO) mod tidy
 
+run: build
+	./$(BUILD_DIR)/$(BINARY_NAME)
+
 build-linux:
 	mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-x86_64
