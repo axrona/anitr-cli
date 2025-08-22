@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -14,7 +16,10 @@ import (
 	"github.com/xeyossr/anitr-cli/internal"
 )
 
-var ErrQuit = errors.New("quit requested")
+var (
+	ErrQuit   = errors.New("quit requested")
+	ErrGoBack = errors.New("go back requested")
+)
 
 // Stil ve renkler
 var (
@@ -43,6 +48,62 @@ var (
 			Foreground(lipgloss.Color(normalFgColor)).
 			Padding(0, 1)
 )
+
+// Spinner modeli
+type SpinnerModel struct {
+	spinner  spinner.Model
+	label    string
+	quitting bool
+}
+
+func ShowSpinner(label string, done chan struct{}) {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#e45cc0"))
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			fmt.Printf("\r✔ %s\n", label)
+			return
+		case <-ticker.C:
+			s, _ = s.Update(spinner.TickMsg{})
+			fmt.Printf("\r%s %s", s.View(), label)
+		}
+	}
+}
+
+func (m SpinnerModel) Init() tea.Cmd {
+	return m.spinner.Tick
+}
+
+func (m SpinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			m.quitting = true
+			return m, tea.Quit
+		}
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+	}
+	var cmd tea.Cmd
+	m.spinner, cmd = m.spinner.Update(msg)
+	return m, cmd
+}
+
+func (m SpinnerModel) View() string {
+	if m.quitting {
+		return ""
+	}
+	return fmt.Sprintf("%s %s", m.spinner.View(), m.label)
+}
 
 // Hatayı pastel kırmızı kutu içinde gösterir ve programı sonlandırır
 func ShowErrorBox(message string) {
@@ -180,9 +241,16 @@ func (m SelectionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.quitting = true
 			return m, tea.Quit
-		case "ctrl+c", "esc", "q":
+
+		case "ctrl+c", "q":
 			m.err = ErrQuit
 			m.quitting = true
+			return m, tea.Quit
+
+		case "esc":
+			m.selected = nil
+			m.quitting = true
+			m.err = ErrGoBack
 			return m, tea.Quit
 		}
 	}
@@ -281,9 +349,15 @@ func (m MultiSelectionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.quitting = true
 			return m, tea.Quit
-		case "ctrl+c", "esc", "q":
+		case "ctrl+c", "q":
 			m.err = ErrQuit
 			m.quitting = true
+			return m, tea.Quit
+
+		case "esc":
+			m.selected = nil
+			m.quitting = true
+			m.err = ErrGoBack
 			return m, tea.Quit
 		}
 	}
@@ -343,10 +417,16 @@ func (m InputFromUserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.quitting = true
 			return m, tea.Quit
-		case "ctrl+c", "esc":
+		case "ctrl+c":
 			m.err = ErrQuit
 			m.quitting = true
 			return m, tea.Quit
+
+		case "esc":
+			m.err = ErrGoBack
+			m.quitting = true
+			return m, tea.Quit
+
 		}
 	}
 	var cmd tea.Cmd
