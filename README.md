@@ -21,21 +21,21 @@
 ## 🎬 Özellikler
 
 - **Cross-Platform**: Linux, Windows ve macOS üzerinde çalışabilir.
-- **AnimeCix ve OpenAnime Entegrasyonu**: Popüler anime platformlarından hızlı arama ve izleme imkanı.
-- **Fansub Seçimi**: OpenAnime üzerinden izlerken favori çeviri grubunuzu seçme özgürlüğü.
-- **Bölüm Takibi**: İzlediğiniz animenin en son bölümünü hatırlayarak bir sonraki bölümden başlar.
-- **Çoklu Arayüz Desteği**: Terminal tabanlı TUI ve minimalist grafik arayüz (Rofi UI) seçenekleri.
-- **Anime İndirme Özelliği**: İzlediğiniz animeleri cihazınıza indirip çevrimdışı izleme imkanı.
-- **Discord Rich Presence**: İzlediğiniz animeyi Discord profilinizde paylaşın.
-- **Otomatik Güncelleme Kontrolü**: Uygulama her başlatıldığında yeni sürüm olup olmadığını kontrol eder.
+- **AnimeCix ve OpenAnime Entegrasyonu**: Popüler anime platformlarından hızlı arama ve izleme.
+- **Fansub Seçimi**: OpenAnime üzerinden izlerken istediğin çeviri grubunu seçebilirsin.
+- **İzleme Geçmişi**: İzlediğin animeler kaydedilir, kaldığın bölümden devam edebilirsin.
+- **Arayüz Esnekliği**: Terminal tabanlı TUI ya da minimalist Rofi arayüzünden dilediğini kullan.
+- **İndirme Özelliği**: Animeleri indirip internet olmadan da izleme özgürlüğü.
+- **Discord Rich Presence**: O an izlediğin animeyi Discord profilinde göster.
+- **Otomatik Güncelleme Kontrolü**: Açılışta yeni sürüm varsa otomatik olarak haber verir.
 
 ---
 
 ## ⚡ Kurulum
 
-## 🐧 Linux
+### 🐧 Linux
 
-### Arch tabanlı dağıtımlar (AUR):
+#### Arch tabanlı dağıtımlar (AUR):
 
 ```bash
 yay -S anitr-cli
@@ -45,7 +45,7 @@ ya da
 paru -S anitr-cli
 ```
 
-### Diğer Linux dağıtımları:
+#### Diğer Linux dağıtımları:
 
 ```bash
 curl -sS https://raw.githubusercontent.com/xeyossr/anitr-cli/main/install.sh | bash
@@ -87,7 +87,7 @@ make install-linux
   sudo zypper install go git make mpv rofi yt-dlp
   ```
 
-## 🪟 Windows
+### 🪟 Windows
 
 > [!NOTE]
 > Windows sürümünde GUI bulunmaz, yalnızca TUI ile çalışır.
@@ -101,7 +101,7 @@ make install-linux
 
 Artık **cmd** veya **PowerShell** içinde anitr-cli çalıştırabilirsiniz.
 
-## 💻 MacOS
+### 💻 MacOS
 
 > [!WARNING]
 > Mac cihazım olmadığından dolayı **anitr-cli** MacOS üzerinde test edilmedi. 
@@ -146,6 +146,24 @@ Alt komutlar: (Sadece Linux)
     `-f`, `--rofi-flags`  Rofi’ye özel parametreler (örn: `--rofi-flags="-theme mytheme"`)   
   `tui`                   Terminal arayüzü ile başlatır   
 
+---
+
+### ⚙️ Yapılandırma 
+
+**anitr-cli** config dosyasını şu dizinlerde arar:
+
+- **Linux / macOS:** `~/.anitr-cli/config.json`
+- **Windows:** `%APPDATA%\AnitrCLI\config.json`
+
+> Eğer dosya yoksa, uygulama çalıştırıldığında varsayılan ayarlar kullanılır. Aşağıdaki örnek varsayılan ayarlarla oluşturulmuştur
+
+```jsonc
+{
+  "default_source": "openanime", // Varsayılan anime kaynağı: "animecix" veya "openanime"
+  "history_limit":  0,         // "Geçmiş" menüsündeki öğe limiti (0 = unlimited)
+  "disable_rpc":    false     // Discord Rich Presence (flag ile override edilebilir)
+}
+```
 ---
 
 ## 💡 Sorunlar & Katkı
