@@ -335,7 +335,7 @@ func mainMenu(cfx *App) {
 
 			// Bölümleri al
 			episodes, episodeNames, isMovie, selectedSeasonIndex, err := getEpisodesAndNames(
-				*cfx.source, false, animeId, animeSlug, historySelectedAnime, cfx.logger,
+				*cfx.source, false, animeId, animeSlug, historySelectedAnime,
 			)
 			if err != nil {
 				cfx.logger.LogError(err)
@@ -680,7 +680,7 @@ func getAnimeIDs(source models.AnimeSource, selectedAnime models.Anime) (int, st
 }
 
 // Seçilen animeye ait bölümleri getirir, isim listesi oluşturur ve movie olup olmadığını döner
-func getEpisodesAndNames(source models.AnimeSource, isMovie bool, selectedAnimeID int, selectedAnimeSlug string, selectedAnimeName string, logger *utils.Logger) ([]models.Episode, []string, bool, int, error) {
+func getEpisodesAndNames(source models.AnimeSource, isMovie bool, selectedAnimeID int, selectedAnimeSlug string, selectedAnimeName string) ([]models.Episode, []string, bool, int, error) {
 	var (
 		episodes            []models.Episode
 		episodeNames        []string
@@ -763,12 +763,6 @@ func playAnimeLoop(
 	if lastEpisodeIdx >= 0 && len(episodes) > lastEpisodeIdx+1 {
 		// Eğer daha önce izlenmişse bir sonraki bölüm
 		selectedEpisodeIndex = lastEpisodeIdx + 1
-	}
-
-	// Discord RPC için giriş yap
-	loggedIn, err := rpc.ClientLogin()
-	if err != nil || !loggedIn {
-		logger.LogError(err)
 	}
 
 	for {
@@ -912,7 +906,7 @@ func playAnimeLoop(
 			close(done)
 
 			if !disableRPC {
-				go updateDiscordRPC(socketPath, episodeNames, selectedEpisodeIndex, selectedAnimeName, selectedSource, posterURL, logger, &loggedIn)
+				go updateDiscordRPC(socketPath, episodeNames, selectedEpisodeIndex, selectedAnimeName, selectedSource, posterURL, logger)
 			}
 
 			var selectedAnimeId string
@@ -1182,7 +1176,7 @@ func playAnimeLoop(
 				choice, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, []string{"Bu kaynakla devam et", "Kaynak değiştir", "Çık"}, fmt.Sprintf("Arama kaynağı: %s", selectedSource))
 
 				if errors.Is(err, tui.ErrGoBack) {
-					continue
+					break
 				}
 
 				if err != nil {
@@ -1217,7 +1211,7 @@ func playAnimeLoop(
 }
 
 // Discord RPC'yi güncelleyerek anime oynatma durumunu Discord'a yansıtır
-func updateDiscordRPC(socketPath string, episodeNames []string, selectedEpisodeIndex int, selectedAnimeName, selectedSource, posterURL string, logger *utils.Logger, loggedIn *bool) {
+func updateDiscordRPC(socketPath string, episodeNames []string, selectedEpisodeIndex int, selectedAnimeName, selectedSource, posterURL string, logger *utils.Logger) {
 	// 5 saniyede bir discord RPC güncellemesi yapmak için zamanlayıcı başlatılır
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -1265,23 +1259,22 @@ func updateDiscordRPC(socketPath string, episodeNames []string, selectedEpisodeI
 		state := fmt.Sprintf("%s (%s / %s)", episodeNames[selectedEpisodeIndex], formatTime(timePos), formatTime(duration))
 		// Eğer video duraklatıldıysa, duraklatma bilgisini ekle
 		if isPaused {
-			state = fmt.Sprintf("%s (%s / %s) (Paused)", episodeNames[selectedEpisodeIndex], formatTime(timePos), formatTime(duration))
+			state += " (Paused)"
 		}
 
-		// Discord RPC için parametreleri ayarla ve RPC'yi güncelle
-		var err2 error
-		*loggedIn, err2 = rpc.DiscordRPC(internal.RPCParams{
+		// RPC parametreleri
+		params := internal.RPCParams{
 			Details:    selectedAnimeName,
 			State:      state,
 			SmallImage: strings.ToLower(selectedSource),
 			SmallText:  selectedSource,
 			LargeImage: posterURL,
 			LargeText:  selectedAnimeName,
-		}, *loggedIn)
+		}
 
-		// Discord RPC güncelleme hatası varsa logla
-		if err2 != nil {
-			logger.LogError(fmt.Errorf("DiscordRPC hatası: %w", err2))
+		// Discord RPC güncelle
+		if err := rpc.DiscordRPC(params); err != nil {
+			logger.LogError(fmt.Errorf("DiscordRPC hatası: %w", err))
 			continue
 		}
 	}
@@ -1346,7 +1339,7 @@ func app(cfx *App) error {
 
 		// Anime bölümleri alınır
 		episodes, episodeNames, isMovie, selectedSeasonIndex, err := getEpisodesAndNames(
-			*cfx.source, isMovie, selectedAnimeID, selectedAnimeSlug, selectedAnime.Title, cfx.logger,
+			*cfx.source, isMovie, selectedAnimeID, selectedAnimeSlug, selectedAnime.Title,
 		)
 		// Hata durumunda kullanıcıya seçenek sunulur
 		if err != nil {
