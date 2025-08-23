@@ -8,9 +8,9 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/hugolgst/rich-go v0.0.0-20240715122152-74618cc1ace2
 	github.com/muesli/reflow v0.3.0
 	github.com/spf13/cobra v1.9.1
+	github.com/xeyossr/go-discordrpc v1.0.0
 )
 
 require (
