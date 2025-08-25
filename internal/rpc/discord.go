@@ -37,6 +37,7 @@ func DiscordRPC(params internal.RPCParams) error {
 
 	// Discord aktivitesini ayarla
 	err := c.SetActivity(client.Activity{
+		Type:       3,                 // Watching
 		State:      params.State,      // Aktivite durumu
 		Details:    params.Details,    // Aktivite detayları
 		LargeImage: params.LargeImage, // Büyük resim
@@ -48,6 +49,9 @@ func DiscordRPC(params internal.RPCParams) error {
 				Label: "GitHub",
 				Url:   "https://github.com/xeyossr/anitr-cli", // GitHub bağlantısı
 			},
+		},
+		Timestamps: &client.Timestamps{
+			Start: &params.Timestamp,
 		},
 	})
 
@@ -75,10 +79,22 @@ func DiscordRPC(params internal.RPCParams) error {
 				Url:   "https://github.com/xeyossr/anitr-cli",
 			},
 		},
+		Timestamps: &client.Timestamps{
+			Start: &params.Timestamp,
+		},
 	}); err != nil {
 		return fmt.Errorf("discord rpc retry set activity failed: %w", err)
 	}
 
+	return nil
+}
+
+// ClientLogout, Discord RPC'den çıkış yapar
+func ClientLogout() error {
+	c := getClient()
+	if err := c.Logout(); err != nil {
+		return fmt.Errorf("discord rpc logout failed: %w", err)
+	}
 	return nil
 }
 
