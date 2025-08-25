@@ -3,13 +3,13 @@
 <h1>anitr-cli</h1>
 <h3>Terminalde Türkçe altyazılı anime arama ve izleme aracı 🚀</h3>
 
-<img src="https://raw.githubusercontent.com/xeyossr/anitr-cli/main/assets/anitr-preview.gif" alt="anitr-cli preview" width="600"/>
+<img src="https://raw.githubusercontent.com/axrona/anitr-cli/main/assets/anitr-preview.gif" alt="anitr-cli preview" width="600"/>
 
 <p>
   
-[![Lisans: GPL3](https://img.shields.io/github/license/xeyossr/anitr-cli?style=for-the-badge&logo=opensourceinitiative&logoColor=white&label=Lisans)](https://github.com/xeyossr/anitr-cli/blob/main/LICENSE)
+[![Lisans: GPL3](https://img.shields.io/github/license/axrona/anitr-cli?style=for-the-badge&logo=opensourceinitiative&logoColor=white&label=Lisans)](https://github.com/axrona/anitr-cli/blob/main/LICENSE)
 [![Go Versiyon](https://img.shields.io/badge/Go-1.23+-blue?style=for-the-badge&logo=go&logoColor=white)](https://golang.org/dl/)
-[![Release](https://img.shields.io/github/v/release/xeyossr/anitr-cli?style=for-the-badge&logo=github&logoColor=white&label=Son%20Sürüm)](https://github.com/xeyossr/anitr-cli/releases/latest)
+[![Release](https://img.shields.io/github/v/release/axrona/anitr-cli?style=for-the-badge&logo=github&logoColor=white&label=Son%20Sürüm)](https://github.com/axrona/anitr-cli/releases/latest)
 [![AUR](https://img.shields.io/aur/version/anitr-cli?style=for-the-badge&logo=archlinux&logoColor=white&label=AUR)](https://aur.archlinux.org/packages/anitr-cli)
     
 </p>
@@ -48,11 +48,11 @@ paru -S anitr-cli
 #### Diğer Linux dağıtımları:
 
 ```bash
-curl -sS https://raw.githubusercontent.com/xeyossr/anitr-cli/main/install.sh | bash
+curl -sS https://raw.githubusercontent.com/axrona/anitr-cli/main/install.sh | bash
 ```
 ya da
 ```bash
-git clone https://github.com/xeyossr/anitr-cli.git
+git clone https://github.com/axrona/anitr-cli.git
 cd anitr-cli  
 git fetch --tags
 make install-linux
@@ -93,7 +93,7 @@ make install-linux
 > Windows sürümünde GUI bulunmaz, yalnızca TUI ile çalışır.
 
 1. Sisteminizde [**MPV**](https://sourceforge.net/projects/mpv-player-windows/files/) kurulu olmalıdır.
-2. [Releases](https://github.com/xeyossr/anitr-cli/releases) sayfasından `anitr-cli.exe` indirin.
+2. [Releases](https://github.com/axrona/anitr-cli/releases) sayfasından `anitr-cli.exe` indirin.
 3. `C:\Program Files\anitr-cli` klasörünü oluşturun.
 4. `anitr-cli.exe` dosyasını bu klasöre taşıyın.
 5. PATH’e `C:\Program Files\anitr-cli` ekleyin.
@@ -105,11 +105,11 @@ Artık **cmd** veya **PowerShell** içinde anitr-cli çalıştırabilirsiniz.
 
 > [!WARNING]
 > Mac cihazım olmadığından dolayı **anitr-cli** MacOS üzerinde test edilmedi. 
-> Ancak, Linux'ta kullanılan yöntemlerle kurulup çalışması oldukça muhtemeldir. Herhangi bir sorunla karşılaşırsanız lütfen [**issue**](https://github.com/xeyossr/anitr-cli/issues) açınız.
+> Ancak, Linux'ta kullanılan yöntemlerle kurulup çalışması oldukça muhtemeldir. Herhangi bir sorunla karşılaşırsanız lütfen [**issue**](https://github.com/axrona/anitr-cli/issues) açınız.
 
 **Kurulum (Manuel)**:
 ```bash
-git clone https://github.com/xeyossr/anitr-cli.git
+git clone https://github.com/axrona/anitr-cli.git
 cd anitr-cli
 git fetch --tags
 make install-macos
@@ -168,7 +168,7 @@ Alt komutlar: (Sadece Linux)
 
 ## 💡 Sorunlar & Katkı
 
-Her türlü hata, öneri veya katkı için [issue](https://github.com/xeyossr/anitr-cli/issues) açabilirsiniz. Katkılarınızı bekliyoruz!
+Her türlü hata, öneri veya katkı için [issue](https://github.com/axrona/anitr-cli/issues) açabilirsiniz. Katkılarınızı bekliyoruz!
 
 ---
 
