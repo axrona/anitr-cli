@@ -23,7 +23,7 @@ var configAnimecix = internal.Config{
 	BaseUrl:        "https://animecix.tv/",
 	AlternativeUrl: "https://mangacix.net/",
 	VideoPlayers:   []string{"tau-video.xyz", "sibnet"},
-	HttpHeaders:    map[string]string{"Accept": "application/json", "User-Agent": "Mozilla/5.0"},
+	HttpHeaders:    map[string]string{"Accept": "application/json", "User-Agent": "Mozilla/5.0", "x-e-h": "=.a"},
 }
 
 // VideoURL, video URL'sinin etiket ve bağlantısını tutar
@@ -531,36 +531,12 @@ func FetchTRCaption(seasonIndex, episodeIndex, id int) (string, error) {
 func AnimeMovieWatchApiUrl(id int) (map[string]interface{}, error) {
 	Url := fmt.Sprintf("%ssecure/titles/%d?titleId=%d", configAnimecix.BaseUrl, id, id)
 
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", Url, nil)
+	data, err := internal.GetJson(Url, configAnimecix.HttpHeaders)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("anime verisi alınamadı: %w", err)
 	}
 
-	req.Header.Set("Accept", configAnimecix.HttpHeaders["Accept"])
-	req.Header.Set("User-Agent", configAnimecix.HttpHeaders["User-Agent"])
-	req.Header.Set("x-e-h", "=.a")
-
-	// API'den veri al
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("HTTP isteği başarısız: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Gelen yanıtı çözümle
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("HTTP yanıtı okunamadı: %w", err)
-	}
-
-	var result interface{}
-	err = json.Unmarshal(respBody, &result)
-	if err != nil {
-		return nil, fmt.Errorf("JSON ayrıştırma hatası: %w", err)
-	}
-
-	dataMap, ok := result.(map[string]interface{})
+	dataMap, ok := data.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("data beklenen formatta değil")
 	}
