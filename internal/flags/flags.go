@@ -4,7 +4,7 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
-	"github.com/xeyossr/anitr-cli/internal/update"
+	"github.com/axrona/anitr-cli/internal/update"
 )
 
 type Flags struct {

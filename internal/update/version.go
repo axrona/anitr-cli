@@ -4,7 +4,7 @@ package update
 import "fmt"
 
 // GithubRepo, anitr-cli projesinin GitHub üzerindeki kullanıcı/ad şeklindeki yolu.
-var GithubRepo string = "xeyossr/anitr-cli"
+var GithubRepo string = "axrona/anitr-cli"
 
 // githubAPI, GitHub API üzerinden en son sürüm bilgilerini çeken URL.
 var githubAPI string = fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", GithubRepo)

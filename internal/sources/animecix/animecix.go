@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xeyossr/anitr-cli/internal"
-	"github.com/xeyossr/anitr-cli/internal/models"
-	"github.com/xeyossr/anitr-cli/internal/utils"
+	"github.com/axrona/anitr-cli/internal"
+	"github.com/axrona/anitr-cli/internal/models"
+	"github.com/axrona/anitr-cli/internal/utils"
 )
 
 type AnimeCix struct{}

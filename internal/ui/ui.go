@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/xeyossr/anitr-cli/internal"
-	"github.com/xeyossr/anitr-cli/internal/ui/rofi"
-	"github.com/xeyossr/anitr-cli/internal/ui/tui"
+	"github.com/axrona/anitr-cli/internal"
+	"github.com/axrona/anitr-cli/internal/ui/rofi"
+	"github.com/axrona/anitr-cli/internal/ui/tui"
 )
 
 // Ekranı temizler

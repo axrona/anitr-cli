@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/xeyossr/anitr-cli/internal/player"
+	"github.com/axrona/anitr-cli/internal/player"
 )
 
 // AnimeHistoryEntry, her anime için tutulacak bilgiler

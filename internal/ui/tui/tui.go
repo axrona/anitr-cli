@@ -13,7 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/truncate"
-	"github.com/xeyossr/anitr-cli/internal"
+	"github.com/axrona/anitr-cli/internal"
 )
 
 var (

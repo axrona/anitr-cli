@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/xeyossr/anitr-cli/internal"
+	"github.com/axrona/anitr-cli/internal"
 )
 
 // isRofiExist, sistemde "rofi" uygulamasının yüklü olup olmadığını kontrol eder

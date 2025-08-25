@@ -1,4 +1,4 @@
-module github.com/xeyossr/anitr-cli
+module github.com/axrona/anitr-cli
 
 go 1.23.0
 
@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/muesli/reflow v0.3.0
 	github.com/spf13/cobra v1.9.1
-	github.com/xeyossr/go-discordrpc v1.1.0
+	github.com/axrona/go-discordrpc v1.1.0
 )
 
 require (

@@ -3,8 +3,8 @@ package rpc
 import (
 	"fmt"
 
-	"github.com/xeyossr/anitr-cli/internal"
-	"github.com/xeyossr/go-discordrpc/client"
+	"github.com/axrona/anitr-cli/internal"
+	"github.com/axrona/go-discordrpc/client"
 )
 
 var discordClient *client.Client
@@ -47,7 +47,7 @@ func DiscordRPC(params internal.RPCParams) error {
 		Buttons: []*client.Button{ // Butonlar
 			{
 				Label: "GitHub",
-				Url:   "https://github.com/xeyossr/anitr-cli", // GitHub bağlantısı
+				Url:   "https://github.com/axrona/anitr-cli", // GitHub bağlantısı
 			},
 		},
 		Timestamps: &client.Timestamps{
@@ -76,7 +76,7 @@ func DiscordRPC(params internal.RPCParams) error {
 		Buttons: []*client.Button{
 			{
 				Label: "GitHub",
-				Url:   "https://github.com/xeyossr/anitr-cli",
+				Url:   "https://github.com/axrona/anitr-cli",
 			},
 		},
 		Timestamps: &client.Timestamps{

@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xeyossr/anitr-cli/internal"
-	"github.com/xeyossr/anitr-cli/internal/ui"
+	"github.com/axrona/anitr-cli/internal"
+	"github.com/axrona/anitr-cli/internal/ui"
 )
 
 var ErrQuit = errors.New("quit requested")
