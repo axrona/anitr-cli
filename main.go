@@ -268,7 +268,7 @@ func getSelectedEpidodesLinks(
 // --- UI ve kullanıcı etkileşimi fonksiyonları ---
 
 // Ana menü
-func mainMenu(cfx *App) {
+func mainMenu(cfx *App, timestamp time.Time) {
 	for {
 		// Ekranı temizle
 		ui.ClearScreen()
@@ -289,7 +289,7 @@ func mainMenu(cfx *App) {
 		switch selectedChoice {
 		case "Anime Ara":
 			// Arama-oynatma döngüsüne gir
-			if err := app(cfx); err != nil {
+			if err := app(cfx, timestamp); err != nil {
 				if errors.Is(err, tui.ErrGoBack) {
 					continue
 				}
@@ -338,6 +338,8 @@ func mainMenu(cfx *App) {
 				*cfx.source, false, animeId, animeSlug, historySelectedAnime,
 			)
 			if err != nil {
+				close(done) // spinneri durdur
+
 				cfx.logger.LogError(err)
 
 				choice, err := showSelection(App{uiMode: cfx.uiMode, rofiFlags: cfx.rofiFlags}, []string{"Farklı Anime Ara", "Kaynak Değiştir", "Çık"}, fmt.Sprintf("Hata: %s", err.Error()))
@@ -367,6 +369,7 @@ func mainMenu(cfx *App) {
 			source := *cfx.source
 			selectedAnime, err := source.GetAnimeByID(historyAnimeId)
 			if err != nil {
+				close(done) // spinneri durdur
 				cfx.logger.LogError(err)
 				return
 			}
@@ -385,7 +388,7 @@ func mainMenu(cfx *App) {
 				*cfx.source, *cfx.selectedSource, episodes, episodeNames,
 				animeId, animeSlug, historySelectedAnime,
 				isMovie, selectedSeasonIndex, *cfx.uiMode, *cfx.rofiFlags,
-				posterURL, *cfx.disableRPC, *cfx.animeHistory, cfx.logger,
+				posterURL, *cfx.disableRPC, timestamp, *cfx.animeHistory, cfx.logger,
 			)
 			if err != nil {
 				cfx.logger.LogError(err)
@@ -579,6 +582,9 @@ func searchAnime(source models.AnimeSource, uiMode string, rofiFlags string, log
 		// API üzerinden arama yap
 		searchData, err := source.GetSearchData(query)
 		if err != nil {
+			close(done)      // spinneri durdur
+			ui.ClearScreen() // ekranı temizle
+
 			ui.ShowError(internal.UiParams{
 				Mode:      uiMode,
 				RofiFlags: &rofiFlags,
@@ -594,6 +600,8 @@ func searchAnime(source models.AnimeSource, uiMode string, rofiFlags string, log
 		}
 		// Hiç sonuç çıkmazsa kullanıcıyı bilgilendir
 		if searchData == nil {
+			close(done)      // spinneri durdur
+			ui.ClearScreen() // ekranı temizle
 			fmt.Printf("\033[31m[!] Arama sonucu bulunamadı!\033[0m")
 			time.Sleep(1500 * time.Millisecond)
 			continue
@@ -745,7 +753,8 @@ func playAnimeLoop(
 	rofiFlags string, // Rofi için özel bayraklar
 	posterURL string, // Poster görseli URL'si (Discord RPC için)
 	disableRPC bool, // Discord RPC devre dışı mı?
-	animeHistory utils.AnimeHistory,
+	timestamp time.Time, // Discord RPC timestamp
+	animeHistory utils.AnimeHistory, // Geçmiş veri tipi
 	logger *utils.Logger, // Logger
 ) (models.AnimeSource, string, error) { // Geriye güncel kaynak ve kaynak ismi döner
 
@@ -848,6 +857,8 @@ func playAnimeLoop(
 				&selectedAnimeSlug,
 			)
 			if err != nil {
+				close(done)      // spinneri durdur
+				ui.ClearScreen() // ekranı temizle
 				fmt.Printf("\033[31m[!] Bölüm oynatılamadı: %s\033[0m\n", err)
 				time.Sleep(1500 * time.Millisecond)
 				continue
@@ -884,7 +895,8 @@ func playAnimeLoop(
 				Mode:      uiMode,
 				RofiFlags: &rofiFlags,
 			}, err, logger) {
-				return source, selectedSource, nil
+				close(done) // spinneri durdur
+				return source, selectedSource, err
 			}
 
 			// MPV’nin çalışıp çalışmadığını kontrol et
@@ -898,15 +910,20 @@ func playAnimeLoop(
 				}
 			}
 			if !mpvRunning {
-				logger.LogError(fmt.Errorf("MPV başlatılamadı veya zamanında yanıt vermedi"))
-				return source, selectedSource, nil
+				close(done)      // spinneri durdur
+				ui.ClearScreen() // ekranı temizle
+				err := fmt.Errorf("MPV başlatılamadı veya zamanında yanıt vermedi")
+				logger.LogError(err)
+				return source, selectedSource, err
 			}
 
 			// Loading spinner durdur
 			close(done)
 
+			var stopCh chan struct{}
 			if !disableRPC {
-				go updateDiscordRPC(socketPath, episodeNames, selectedEpisodeIndex, selectedAnimeName, selectedSource, posterURL, logger)
+				stopCh = make(chan struct{}) // Goroutine'i durdurmak için kanal oluştur
+				go updateDiscordRPC(socketPath, episodeNames, selectedEpisodeIndex, selectedAnimeName, selectedSource, posterURL, timestamp, logger, stopCh)
 			}
 
 			var selectedAnimeId string
@@ -923,7 +940,14 @@ func playAnimeLoop(
 			// Oynatma işlemi tamamlanana kadar bekle
 			err = cmd.Wait()
 			if err != nil {
-				fmt.Println("MPV çalışırken hata:", err)
+				err = fmt.Errorf("MPV çalışırken hata: %w", err)
+				logger.LogError(err)
+				return source, selectedSource, err
+			}
+
+			if stopCh != nil {
+				// MPV kapandı → RPC goroutine'ini durdur
+				close(stopCh)
 			}
 
 		// Çözünürlük seçme ekranı
@@ -947,6 +971,9 @@ func playAnimeLoop(
 				&selectedAnimeSlug,
 			)
 			if err != nil {
+				close(done)      // spinneri durdur
+				ui.ClearScreen() // ekranı temizle
+
 				fmt.Printf("\033[31m[!] Çözünürlükler yüklenemedi.\033[0m\n")
 				time.Sleep(1000 * time.Millisecond)
 				continue
@@ -1011,6 +1038,9 @@ func playAnimeLoop(
 			fansubNames := []string{}
 
 			if strings.ToLower(source.Source()) != "openanime" {
+				close(done)      // spinneri durdur
+				ui.ClearScreen() // ekranı temizle
+
 				fmt.Println("\033[31m[!] Bu seçenek sadece OpenAnime için geçerlidir.\033[0m")
 				time.Sleep(1500 * time.Millisecond)
 				continue
@@ -1027,6 +1057,9 @@ func playAnimeLoop(
 				&selectedAnimeSlug,
 			)
 			if err != nil {
+				close(done)      // spinneri durdur
+				ui.ClearScreen() // ekranı temizle
+
 				fmt.Printf("\033[31m[!] Fansublar yüklenemedi.\033[0m\n")
 				time.Sleep(1000 * time.Millisecond)
 				continue
@@ -1140,6 +1173,9 @@ func playAnimeLoop(
 				selectedAnimeID,
 			)
 			if err != nil {
+				close(done)      // spinneri durdur
+				ui.ClearScreen() // ekranı temizle
+
 				fmt.Printf("\033[31m[!] Bölüm URL'leri alınamadı: %s\033[0m\n", err)
 				time.Sleep(1500 * time.Millisecond)
 				continue
@@ -1158,13 +1194,18 @@ func playAnimeLoop(
 					continue
 				}
 
-				episodeNumber := ep.Number
+				episodeNumber, err := utils.ExtractSeasonEpisode(ep.Title)
+				if err != nil {
+					fmt.Printf("\033[31m[!] %s için bölüm numarası çıkarılamadı: %s\033[0m\n", ep.Title, err)
+					continue
+				}
+
 				seasonNumber, ok := ep.Extra["season_num"].(float64)
 				if !ok {
 					logger.LogError(fmt.Errorf("season_num float64 değil"))
 				}
 
-				err := downloader.Download(strings.ToLower(source.Source()), selectedAnimeName, url, episodeNumber, int(seasonNumber))
+				err = downloader.Download(strings.ToLower(source.Source()), selectedAnimeName, url, episodeNumber, int(seasonNumber))
 				if err != nil {
 					fmt.Printf("\033[31m[!] %s indirilemedi: %s\033[0m\n", ep.Title, err)
 				}
@@ -1211,71 +1252,68 @@ func playAnimeLoop(
 }
 
 // Discord RPC'yi güncelleyerek anime oynatma durumunu Discord'a yansıtır
-func updateDiscordRPC(socketPath string, episodeNames []string, selectedEpisodeIndex int, selectedAnimeName, selectedSource, posterURL string, logger *utils.Logger) {
-	// 5 saniyede bir discord RPC güncellemesi yapmak için zamanlayıcı başlatılır
+func updateDiscordRPC(socketPath string, episodeNames []string, selectedEpisodeIndex int,
+	selectedAnimeName, selectedSource, posterURL string, timestamp time.Time, logger *utils.Logger, stopCh <-chan struct{},
+) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	// Zamanlayıcı her tetiklendiğinde bu bloğu çalıştır
-	for range ticker.C {
-		// Eğer MPV çalışmıyorsa döngüden çık
-		if !player.IsMPVRunning(socketPath) {
-			break
-		}
-
-		// MPV'nin duraklatma durumunu al
-		isPaused, _ := player.GetMPVPausedStatus(socketPath)
-
-		// MPV'nin toplam süresini al
-		durationVal, _ := player.MPVSendCommand(socketPath, []interface{}{"get_property", "duration"})
-
-		// MPV'nin geçerli zamanını al
-		timePosVal, _ := player.MPVSendCommand(socketPath, []interface{}{"get_property", "time-pos"})
-
-		// Süre ve zaman konumunu doğru türdeki verilere dönüştür
-		duration, ok1 := durationVal.(float64)
-		timePos, ok2 := timePosVal.(float64)
-		if !ok1 || !ok2 {
-			// Eğer süre veya zaman konumu uygun formatta değilse hata loglanır
-			fmt.Println("süre veya zaman konumu parse edilemedi")
-			continue
-		}
-
-		// Zaman formatını dönüştürmek için yardımcı fonksiyon
-		formatTime := func(seconds float64) string {
-			total := int(seconds + 0.5)    // saniyeleri tam sayıya yuvarla
-			hours := total / 3600          // saatleri hesapla
-			minutes := (total % 3600) / 60 // dakikaları hesapla
-			secs := total % 60             // saniyeleri hesapla
-
-			// Saat varsa "hh:mm:ss", yoksa "mm:ss" formatında döndür
-			if hours > 0 {
-				return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, secs)
+	for {
+		select {
+		case <-stopCh:
+			// Stop sinyali geldi → Discord RPC'yi kapat
+			rpc.ClientLogout()
+			return
+		case <-ticker.C:
+			// Eğer MPV çalışmıyorsa da RPC'yi kapat ve çık
+			if !player.IsMPVRunning(socketPath) {
+				rpc.ClientLogout()
+				return
 			}
-			return fmt.Sprintf("%02d:%02d", minutes, secs)
-		}
 
-		// Discord'da gösterilecek durum bilgisini oluştur
-		state := fmt.Sprintf("%s (%s / %s)", episodeNames[selectedEpisodeIndex], formatTime(timePos), formatTime(duration))
-		// Eğer video duraklatıldıysa, duraklatma bilgisini ekle
-		if isPaused {
-			state += " (Paused)"
-		}
+			// MPV duraklatma durumu
+			isPaused, _ := player.GetMPVPausedStatus(socketPath)
 
-		// RPC parametreleri
-		params := internal.RPCParams{
-			Details:    selectedAnimeName,
-			State:      state,
-			SmallImage: strings.ToLower(selectedSource),
-			SmallText:  selectedSource,
-			LargeImage: posterURL,
-			LargeText:  selectedAnimeName,
-		}
+			// MPV süre ve konum
+			durationVal, _ := player.MPVSendCommand(socketPath, []interface{}{"get_property", "duration"})
+			timePosVal, _ := player.MPVSendCommand(socketPath, []interface{}{"get_property", "time-pos"})
+			duration, ok1 := durationVal.(float64)
+			timePos, ok2 := timePosVal.(float64)
+			if !ok1 || !ok2 {
+				fmt.Println("süre veya zaman konumu parse edilemedi")
+				continue
+			}
 
-		// Discord RPC güncelle
-		if err := rpc.DiscordRPC(params); err != nil {
-			logger.LogError(fmt.Errorf("DiscordRPC hatası: %w", err))
-			continue
+			formatTime := func(seconds float64) string {
+				total := int(seconds + 0.5)
+				hours := total / 3600
+				minutes := (total % 3600) / 60
+				secs := total % 60
+				if hours > 0 {
+					return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, secs)
+				}
+				return fmt.Sprintf("%02d:%02d", minutes, secs)
+			}
+
+			state := fmt.Sprintf("%s (%s / %s)", episodeNames[selectedEpisodeIndex], formatTime(timePos), formatTime(duration))
+			if isPaused {
+				state += " (Paused)"
+			}
+
+			params := internal.RPCParams{
+				Details:    selectedAnimeName,
+				State:      state,
+				SmallImage: strings.ToLower(selectedSource),
+				SmallText:  selectedSource,
+				LargeImage: posterURL,
+				LargeText:  selectedAnimeName,
+				Timestamp:  timestamp,
+			}
+
+			if err := rpc.DiscordRPC(params); err != nil {
+				logger.LogError(fmt.Errorf("DiscordRPC hatası: %w", err))
+				continue
+			}
 		}
 	}
 }
@@ -1303,7 +1341,7 @@ func showSelection(cfx App, list []string, label string) (string, error) {
 }
 
 // Uygulamanın ana fonksiyonu, anime seçimi, oynatma ve hata yönetimini içerir
-func app(cfx *App) error {
+func app(cfx *App, timestamp time.Time) error {
 	for {
 		// Anime arama işlemi yapılır
 		searchData, animeNames, animeTypes, _, err := searchAnime(*cfx.source, *cfx.uiMode, *cfx.rofiFlags, cfx.logger)
@@ -1375,7 +1413,7 @@ func app(cfx *App) error {
 			*cfx.source, *cfx.selectedSource, episodes, episodeNames,
 			selectedAnimeID, selectedAnimeSlug, selectedAnime.Title,
 			isMovie, selectedSeasonIndex, *cfx.uiMode, *cfx.rofiFlags,
-			posterURL, *cfx.disableRPC, *cfx.animeHistory, cfx.logger,
+			posterURL, *cfx.disableRPC, timestamp, *cfx.animeHistory, cfx.logger,
 		)
 
 		if errors.Is(err, tui.ErrGoBack) {
@@ -1449,8 +1487,10 @@ func runMain(cmd *cobra.Command, f *flags.Flags, uiMode string, logger *utils.Lo
 		currentApp.disableRPC = &disableRPC
 	}
 
+	timestamp := time.Now()
+
 	for {
-		mainMenu(currentApp)
+		mainMenu(currentApp, timestamp)
 	}
 }
 
