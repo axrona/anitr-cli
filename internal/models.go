@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // Config, uygulamanın temel yapılandırma ayarlarını temsil eder.
@@ -26,12 +27,13 @@ type UiParams struct {
 
 // RPCParams, Discord Rich Presence için gönderilecek bilgileri içerir.
 type RPCParams struct {
-	Details    string // Aktivite detayı
-	State      string // Kullanıcı durumu
-	LargeImage string // Büyük görselin adı
-	LargeText  string // Büyük görsel üzerine gelindiğinde gösterilecek yazı
-	SmallImage string // Küçük görselin adı
-	SmallText  string // Küçük görsel üzerine gelindiğinde gösterilecek yazı
+	Details    string    // Aktivite detayı
+	State      string    // Kullanıcı durumu
+	LargeImage string    // Büyük görselin adı
+	LargeText  string    // Büyük görsel üzerine gelindiğinde gösterilecek yazı
+	SmallImage string    // Küçük görselin adı
+	SmallText  string    // Küçük görsel üzerine gelindiğinde gösterilecek yazı
+	Timestamp  time.Time // Timestamp
 }
 
 // GetStringPtr, map içinden verilen anahtara karşılık gelen değeri *string olarak döner.
