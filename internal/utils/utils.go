@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/xeyossr/anitr-cli/internal"
@@ -178,4 +180,22 @@ func ConfigDir() string {
 		}
 		return filepath.Join(home, ".anitr-cli")
 	}
+}
+
+var episodeRegex = regexp.MustCompile(`(?i)(\d+(?:\.\d+)?)\s*\.?\s*Bölüm`)
+
+func ExtractSeasonEpisode(title string) (episode float64, err error) {
+	episode = 0
+
+	// Bölümü ara
+	if em := episodeRegex.FindStringSubmatch(title); len(em) >= 2 {
+		episode, err = strconv.ParseFloat(em[1], 64)
+		if err != nil {
+			return 0, fmt.Errorf("bölüm parse edilemedi: %w", err)
+		}
+	} else {
+		return 0, fmt.Errorf("bölüm numarası bulunamadı: %s", title)
+	}
+
+	return episode, nil
 }
