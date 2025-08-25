@@ -5,12 +5,12 @@ go 1.23.0
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/Microsoft/go-winio v0.6.2
+	github.com/axrona/go-discordrpc v1.1.0-1
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/muesli/reflow v0.3.0
 	github.com/spf13/cobra v1.9.1
-	github.com/axrona/go-discordrpc v1.1.0
 )
 
 require (
