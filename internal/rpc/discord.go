@@ -37,7 +37,7 @@ func DiscordRPC(params internal.RPCParams) error {
 
 	// Discord aktivitesini ayarla
 	err := c.SetActivity(client.Activity{
-		Type:       3,                 // Watching
+		Type:       params.Type,       // Aktivite tipi
 		State:      params.State,      // Aktivite durumu
 		Details:    params.Details,    // Aktivite detayları
 		LargeImage: params.LargeImage, // Büyük resim

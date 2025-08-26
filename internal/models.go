@@ -27,6 +27,7 @@ type UiParams struct {
 
 // RPCParams, Discord Rich Presence için gönderilecek bilgileri içerir.
 type RPCParams struct {
+	Type       int       // Playing / Listening / Watching / Competing
 	Details    string    // Aktivite detayı
 	State      string    // Kullanıcı durumu
 	LargeImage string    // Büyük görselin adı
