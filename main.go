@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/axrona/anitr-cli/internal"
 	"github.com/axrona/anitr-cli/internal/dl"
 	"github.com/axrona/anitr-cli/internal/flags"
@@ -26,6 +25,7 @@ import (
 	"github.com/axrona/anitr-cli/internal/ui/tui"
 	"github.com/axrona/anitr-cli/internal/update"
 	"github.com/axrona/anitr-cli/internal/utils"
+	"github.com/spf13/cobra"
 )
 
 // updateWatchAPI, seçilen kaynağa (animecix veya openanime) göre bir bölümün izlenebilir URL'lerini ve altyazı bilgilerini getirir.
@@ -1301,6 +1301,7 @@ func updateDiscordRPC(socketPath string, episodeNames []string, selectedEpisodeI
 			}
 
 			params := internal.RPCParams{
+				Type:       3,
 				Details:    selectedAnimeName,
 				State:      state,
 				SmallImage: strings.ToLower(selectedSource),

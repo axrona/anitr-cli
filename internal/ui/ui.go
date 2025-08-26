@@ -5,15 +5,24 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/axrona/anitr-cli/internal"
 	"github.com/axrona/anitr-cli/internal/ui/rofi"
 	"github.com/axrona/anitr-cli/internal/ui/tui"
 )
 
-// Ekranı temizler
 func ClearScreen() {
-	cmd := exec.Command("clear")
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		// Windows'ta cls
+		cmd = exec.Command("cmd", "/c", "cls")
+	} else {
+		// Linux / macOS için clear
+		cmd = exec.Command("clear")
+	}
+
 	cmd.Stdout = os.Stdout
 	cmd.Run()
 }

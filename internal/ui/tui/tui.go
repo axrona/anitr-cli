@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/axrona/anitr-cli/internal"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/truncate"
-	"github.com/axrona/anitr-cli/internal"
 )
 
 var (
@@ -31,7 +31,7 @@ var (
 	inputPromptFg    = "#c4b48b"
 	inputTextFg      = "#aabbcc"
 	inputCursorFg    = "#c4b48b"
-	selectionMark    = "▸ "
+	selectionMark    = "» "
 
 	pinkHighlight = lipgloss.NewStyle().Foreground(lipgloss.Color(highlightColor))
 
