@@ -161,6 +161,23 @@ func VideosDir() string {
     }
 }
 
+// DefaultDownloadDir işletim sistemine göre varsayılan indirme dizinini döner
+func DefaultDownloadDir() string {
+	if runtime.GOOS == "windows" {
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			userProfile = "." // fallback
+		}
+		return filepath.Join(userProfile, "Downloads", "anitr-cli")
+	} else {
+		home := os.Getenv("HOME")
+		if home == "" {
+			home = "."
+		}
+		return filepath.Join(home, "Downloads", "anitr-cli")
+	}
+}
+
 // ConfigDir platforma göre config dizinini döner
 func ConfigDir() string {
 	if runtime.GOOS == "windows" {

@@ -1169,7 +1169,7 @@ func playAnimeLoop(
 				}
 
 				if cfg.DownloadDir == "" {
-				defaultDir := filepath.Join(os.Getenv("HOME"), "Downloads", "anitr-cli")
+				defaultDir := utils.DefaultDownloadDir()
 				fmt.Printf("Videoları nereye indirmek istersiniz? (Varsayılan: %s): ", defaultDir)
 				var input string
 				fmt.Scanln(&input)

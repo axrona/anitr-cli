@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 )
 
 // Config struct
@@ -28,8 +27,8 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	
 	if cfg.DownloadDir == "" {
-    	cfg.DownloadDir = filepath.Join(os.Getenv("HOME"), "Downloads", "anitr-cli")
-	}
+    	cfg.DownloadDir = DefaultDownloadDir()
+	}	
 
 	return &cfg, nil
 }
