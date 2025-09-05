@@ -148,24 +148,6 @@ Alt komutlar: (Sadece Linux)
 
 ---
 
-### ⚙️ Yapılandırma 
-
-**anitr-cli** config dosyasını şu dizinlerde arar:
-
-- **Linux / macOS:** `~/.anitr-cli/config.json`
-- **Windows:** `%APPDATA%\AnitrCLI\config.json`
-
-> Eğer dosya yoksa, uygulama çalıştırıldığında varsayılan ayarlar kullanılır. Aşağıdaki örnek varsayılan ayarlarla oluşturulmuştur
-
-```jsonc
-{
-  "default_source": "openanime", // Varsayılan anime kaynağı: "animecix" veya "openanime"
-  "history_limit":  0,         // "Geçmiş" menüsündeki öğe limiti (0 = unlimited)
-  "disable_rpc":    false     // Discord Rich Presence (flag ile override edilebilir)
-}
-```
----
-
 ## 💡 Sorunlar & Katkı
 
 Her türlü hata, öneri veya katkı için [issue](https://github.com/axrona/anitr-cli/issues) açabilirsiniz. Katkılarınızı bekliyoruz!
