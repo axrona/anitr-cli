@@ -10,6 +10,7 @@ type Config struct {
 	DefaultSource string `json:"default_source"`
 	HistoryLimit  int    `json:"history_limit"`
 	DisableRPC    *bool  `json:"disable_rpc"`
+	DownloadDir string `json:"download_dir"`
 }
 
 // LoadConfig config'i yükler
@@ -24,6 +25,10 @@ func LoadConfig(path string) (*Config, error) {
 	if err := json.NewDecoder(file).Decode(&cfg); err != nil {
 		return nil, err
 	}
+	
+	if cfg.DownloadDir == "" {
+    	cfg.DownloadDir = DefaultDownloadDir()
+	}	
 
 	return &cfg, nil
 }
