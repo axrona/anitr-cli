@@ -139,23 +139,26 @@ func Ptr[T any](val T) *T {
 	return &val
 }
 
-// VideosDir, platforma göre Videos klasörünü döner
 func VideosDir() string {
-	if runtime.GOOS == "windows" {
-		// Kullanıcı profil dizini → %USERPROFILE%
-		userProfile := os.Getenv("USERPROFILE")
-		if userProfile == "" {
-			userProfile = "." // fallback
-		}
-		return filepath.Join(userProfile, "Videos")
-	} else {
-		// Linux / Mac
-		home := os.Getenv("HOME")
-		if home == "" {
-			home = "."
-		}
-		return filepath.Join(home, "Videos")
-	}
+    cfg, err := LoadConfig(filepath.Join(ConfigDir(), "config.json"))
+    if err == nil && cfg.DownloadDir != "" {
+        return cfg.DownloadDir
+    }
+
+    // fallback → eski davranış
+    if runtime.GOOS == "windows" {
+        userProfile := os.Getenv("USERPROFILE")
+        if userProfile == "" {
+            userProfile = "."
+        }
+        return filepath.Join(userProfile, "Videos")
+    } else {
+        home := os.Getenv("HOME")
+        if home == "" {
+            home = "."
+        }
+        return filepath.Join(home, "Videos")
+    }
 }
 
 // ConfigDir platforma göre config dizinini döner
@@ -181,6 +184,7 @@ func ConfigDir() string {
 		return filepath.Join(home, ".anitr-cli")
 	}
 }
+
 
 var episodeRegex = regexp.MustCompile(`(?i)(\d+(?:\.\d+)?)\s*\.?\s*Bölüm`)
 

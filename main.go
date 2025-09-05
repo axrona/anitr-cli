@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"encoding/json"
 
 	"github.com/axrona/anitr-cli/internal"
 	"github.com/axrona/anitr-cli/internal/dl"
@@ -274,7 +275,7 @@ func mainMenu(cfx *App, timestamp time.Time) {
 		ui.ClearScreen()
 
 		// Menü seçenekleri
-		menuOptions := []string{"Anime Ara", "Kaynak Değiştir", "Geçmiş", "Çık"}
+		menuOptions := []string{"Anime Ara", "Kaynak Değiştir", "Geçmiş", "Ayarlar", "Çık"}
 
 		// Kullanıcıya mevcut kaynağı göster
 		label := fmt.Sprintf("Kaynak: %s", *cfx.selectedSource)
@@ -400,11 +401,74 @@ func mainMenu(cfx *App, timestamp time.Time) {
 				cfx.selectedSource = &newSelectedSource
 			}
 
+		case "Ayarlar":
+    		settingsMenu(cfx)
+
 		case "Çık":
 			os.Exit(0)
 		}
 	}
 }
+
+func settingsMenu(cfx *App) {
+    cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
+    if err != nil {
+        cfg = &utils.Config{}
+    }
+
+    for {
+        menuOptions := []string{
+            fmt.Sprintf("İndirme dizinini değiştir : %s", cfg.DownloadDir),
+            "Geri",
+        }
+
+        selectedChoice, err := showSelection(*cfx, menuOptions, "Ayarlar")
+        if errors.Is(err, tui.ErrGoBack) {
+            return
+        }
+        if err != nil {
+            cfx.logger.LogError(err)
+            continue
+        }
+
+        switch selectedChoice {
+        case menuOptions[0]: // İndirme dizinini değiştir
+		// varsayılan gösterimi ~/ ile
+		homeDir := os.Getenv("HOME")
+		displayDir := cfg.DownloadDir
+		if strings.HasPrefix(cfg.DownloadDir, homeDir) {
+			displayDir = "~" + cfg.DownloadDir[len(homeDir):]
+		}
+
+		fmt.Printf("Yeni dizin (Enter ile değiştirme) [%s]: ", displayDir)
+		var input string
+		fmt.Scanln(&input)
+		if input != "" {
+			// Eğer input ~/ ile başlıyorsa HOME ile değiştir
+			if strings.HasPrefix(input, "~") {
+				input = filepath.Join(homeDir, input[1:])
+			}
+			cfg.DownloadDir = input
+
+			os.MkdirAll(utils.ConfigDir(), 0o755)
+			f, err := os.Create(filepath.Join(utils.ConfigDir(), "config.json"))
+			if err == nil {
+				defer f.Close()
+				enc := json.NewEncoder(f)
+				enc.SetIndent("", "  ")
+				enc.Encode(cfg)
+			}
+			fmt.Println("Dizin güncellendi!")
+			time.Sleep(1200 * time.Millisecond)
+			ui.ClearScreen()
+		}
+
+        case menuOptions[1]: // Geri
+            return
+        }
+    }
+}
+
 
 // Anime geçmişini listeleyen fonksiyon
 func anitrHistory(params internal.UiParams, source string, historyLimit int, logger *utils.Logger) (selectedAnime string, animeId string, lastEpisodeIdx int, err error) {
@@ -1093,12 +1157,40 @@ func playAnimeLoop(
 				continue
 			}
 			selectedFansubIdx = slices.Index(fansubNames, selected)
+			
+			
+			// Movie / Bölüm indir
+			case "Bölüm indir", "Movie indir":
+				ui.ClearScreen()
+				
+				cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
+				if err != nil {
+					cfg = &utils.Config{} // eğer config yoksa varsayılan config oluştur
+				}
 
-		// Movie / Bölüm indir
-		case "Bölüm indir", "Movie indir":
-			ui.ClearScreen()
+				if cfg.DownloadDir == "" {
+				defaultDir := filepath.Join(os.Getenv("HOME"), "Downloads", "anitr-cli")
+				fmt.Printf("Videoları nereye indirmek istersiniz? (Varsayılan: %s): ", defaultDir)
+				var input string
+				fmt.Scanln(&input)
+				if input == "" {
+					input = defaultDir
+				}
+				cfg.DownloadDir = input
 
-			downloader, err := dl.NewDownloader(filepath.Join(utils.VideosDir(), "anitr-cli"))
+				// Config dosyasına kaydet
+				os.MkdirAll(utils.ConfigDir(), 0o755)
+				f, err := os.Create(filepath.Join(utils.ConfigDir(), "config.json"))
+				if err == nil {
+					defer f.Close()
+					enc := json.NewEncoder(f)
+					enc.SetIndent("", "  ")
+					enc.Encode(cfg)
+				}
+			}
+
+			// Downloader için cfg.DownloadDir kullan
+			downloader, err := dl.NewDownloader(cfg.DownloadDir)
 			if err != nil {
 				switch {
 				case errors.Is(err, dl.ErrNoDownloader):
