@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"encoding/json"
 
 	"github.com/axrona/anitr-cli/internal"
 	"github.com/axrona/anitr-cli/internal/dl"
@@ -402,7 +403,7 @@ func mainMenu(cfx *App, timestamp time.Time) {
 			}
 
 		case "Ayarlar":
-    		settingsMenu(cfx)
+			settingsMenu(cfx)
 
 		case "Çık":
 			os.Exit(0)
@@ -411,64 +412,146 @@ func mainMenu(cfx *App, timestamp time.Time) {
 }
 
 func settingsMenu(cfx *App) {
-    cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
-    if err != nil {
-        cfg = &utils.Config{}
-    }
+	cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
+	if err != nil {
+		cfg = &utils.Config{}
+	}
 
-    for {
-        menuOptions := []string{
-            fmt.Sprintf("İndirme dizinini değiştir : %s", cfg.DownloadDir),
-            "Geri",
-        }
+	// Dosyayı okuma ve yazma modunda açıyoruz, mevcut içeriği sıfırlayarak
+	f, err := os.OpenFile(filepath.Join(utils.ConfigDir(), "config.json"), os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		cfx.logger.LogError(err)
+		return
+	}
+	defer f.Close() // Fonksiyon bitince dosya kapanır
 
-        selectedChoice, err := showSelection(*cfx, menuOptions, "Ayarlar")
-        if errors.Is(err, tui.ErrGoBack) {
-            return
-        }
-        if err != nil {
-            cfx.logger.LogError(err)
-            continue
-        }
+	// JSON yazıcı (Encoder değil)
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
 
-        switch selectedChoice {
-        case menuOptions[0]: // İndirme dizinini değiştir
-		// varsayılan gösterimi ~/ ile
-		homeDir := os.Getenv("HOME")
-		displayDir := cfg.DownloadDir
-		if strings.HasPrefix(cfg.DownloadDir, homeDir) {
-			displayDir = "~" + cfg.DownloadDir[len(homeDir):]
+	// Menüdeki değişikliklerin kaydedilmesi için bir flag
+	var changesMade bool
+
+	for {
+		// Ekranı temizle
+		ui.ClearScreen()
+
+		var selectedSourceText string
+		if cfx.selectedSource != nil {
+			selectedSourceText = *cfx.selectedSource
+		} else {
+			selectedSourceText = "Seçili kaynak yok"
 		}
 
-		fmt.Printf("Yeni dizin (Enter ile değiştirme) [%s]: ", displayDir)
-		var input string
-		fmt.Scanln(&input)
-		if input != "" {
-			// Eğer input ~/ ile başlıyorsa HOME ile değiştir
-			if strings.HasPrefix(input, "~") {
-				input = filepath.Join(homeDir, input[1:])
-			}
-			cfg.DownloadDir = input
+		// DisableRPC kontrolü: Nil ise false olarak ayarla
+		var disableRPCText string
+		if cfg.DisableRPC == nil {
+			cfg.DisableRPC = utils.Ptr(false)
+		}
+		disableRPCText = fmt.Sprintf("%v", *cfg.DisableRPC)
 
-			os.MkdirAll(utils.ConfigDir(), 0o755)
-			f, err := os.Create(filepath.Join(utils.ConfigDir(), "config.json"))
-			if err == nil {
-				defer f.Close()
-				enc := json.NewEncoder(f)
-				enc.SetIndent("", "  ")
-				enc.Encode(cfg)
-			}
-			fmt.Println("Dizin güncellendi!")
-			time.Sleep(1200 * time.Millisecond)
-			ui.ClearScreen()
+		menuOptions := []string{
+			"İndirme dizinini değiştir : " + cfg.DownloadDir,
+			"Varsayılan kaynağı değiştir : " + selectedSourceText,
+			"Geçmiş limitini değiştir : " + fmt.Sprintf("%d", cfg.HistoryLimit),
+			"RPC'yi devre dışı bırak : " + disableRPCText,
+			"Geri",
 		}
 
-        case menuOptions[1]: // Geri
-            return
-        }
-    }
+		selectedChoice, err := showSelection(*cfx, menuOptions, "Ayarlar")
+		if errors.Is(err, tui.ErrGoBack) {
+			// Menüden çıkıldığında kaydetme işlemi yap
+			if changesMade {
+				// Dosyaya yazma işlemi sadece değişiklik yapıldıysa yapılacak
+				f.Seek(0, io.SeekStart) // Dosya pointer'ını başa al
+				f.Truncate(0)           // Dosyayı temizle
+				if err := encoder.Encode(cfg); err != nil {
+					cfx.logger.LogError(err)
+				}
+				fmt.Println("Ayarlar başarıyla güncellendi!")
+			} else {
+				// Değişiklik yapılmamışsa dosyayı yazma
+				fmt.Println("Değişiklik yapılmadı, ayarlar korunuyor.")
+			}
+			return
+		}
+		if err != nil {
+			cfx.logger.LogError(err)
+			continue
+		}
+
+		// Seçilen menü seçeneğine göre işlem yap
+		switch selectedChoice {
+		case menuOptions[0]: // İndirme dizinini değiştir
+			homeDir := os.Getenv("HOME")
+			displayDir := cfg.DownloadDir
+			if strings.HasPrefix(cfg.DownloadDir, homeDir) {
+				displayDir = "~" + cfg.DownloadDir[len(homeDir):]
+			}
+
+			fmt.Printf("Yeni dizin (Enter ile değiştirme) [%s]: ", displayDir)
+			var input string
+			fmt.Scanln(&input)
+			if input != "" {
+				if strings.HasPrefix(input, "~") {
+					input = filepath.Join(homeDir, input[1:])
+				}
+				cfg.DownloadDir = input
+				changesMade = true // Flag'i true yapıyoruz, çünkü değişiklik yapıldı
+			}
+
+		case menuOptions[1]: // Kaynak değiştir
+			selectedSource, _ := selectSource(*cfx.uiMode, *cfx.rofiFlags, *cfx.source, cfx.logger)
+			cfx.selectedSource = &selectedSource
+			cfg.DefaultSource = selectedSource
+			changesMade = true
+
+		case menuOptions[2]: // Geçmiş limitini değiştir
+			fmt.Print("Yeni geçmiş limitini girin: ")
+			var newLimit int
+			fmt.Scanln(&newLimit)
+			if newLimit >= 0 {
+				cfg.HistoryLimit = newLimit
+				changesMade = true
+			}
+
+		case menuOptions[3]: // RPC'yi devre dışı bırak
+			choice, err := showSelection(
+				App{uiMode: cfx.uiMode, rofiFlags: cfx.rofiFlags},
+				[]string{"Evet", "Hayır"},
+				"Discord Rich Presence devre dışı bırakılsın mı?",
+			)
+
+			if errors.Is(err, tui.ErrGoBack) {
+				return
+			}
+
+			switch strings.ToLower(choice) {
+			case "evet":
+				cfg.DisableRPC = utils.Ptr(true)
+			case "hayır":
+				cfg.DisableRPC = utils.Ptr(false)
+			default:
+				cfg.DisableRPC = utils.Ptr(false)
+			}
+			changesMade = true
+
+		case menuOptions[4]: // Geri
+			return
+		}
+
+		// Değişiklikleri hemen kaydet
+		if changesMade {
+			// Dosyaya yazma işlemi manuel olarak yapılır
+			f.Seek(0, io.SeekStart) // Dosya pointer'ını başa al
+			f.Truncate(0)           // Dosyayı temizle
+			if err := encoder.Encode(cfg); err != nil {
+				cfx.logger.LogError(err)
+			}
+			fmt.Println("Ayarlar güncellendi!")
+		}
+	}
 }
-
 
 // Anime geçmişini listeleyen fonksiyon
 func anitrHistory(params internal.UiParams, source string, historyLimit int, logger *utils.Logger) (selectedAnime string, animeId string, lastEpisodeIdx int, err error) {
@@ -1157,18 +1240,17 @@ func playAnimeLoop(
 				continue
 			}
 			selectedFansubIdx = slices.Index(fansubNames, selected)
-			
-			
-			// Movie / Bölüm indir
-			case "Bölüm indir", "Movie indir":
-				ui.ClearScreen()
-				
-				cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
-				if err != nil {
-					cfg = &utils.Config{} // eğer config yoksa varsayılan config oluştur
-				}
 
-				if cfg.DownloadDir == "" {
+		// Movie / Bölüm indir
+		case "Bölüm indir", "Movie indir":
+			ui.ClearScreen()
+
+			cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
+			if err != nil {
+				cfg = &utils.Config{} // eğer config yoksa varsayılan config oluştur
+			}
+
+			if cfg.DownloadDir == "" {
 				defaultDir := utils.DefaultDownloadDir()
 				fmt.Printf("Videoları nereye indirmek istersiniz? (Varsayılan: %s): ", defaultDir)
 				var input string
