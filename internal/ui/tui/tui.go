@@ -412,7 +412,6 @@ func (m InputFromUserModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			if len(strings.TrimSpace(m.textInput.Value())) == 0 {
-				m.err = errors.New("boş bırakılamaz")
 				return m, nil
 			}
 			m.quitting = true
