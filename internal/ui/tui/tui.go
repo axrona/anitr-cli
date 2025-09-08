@@ -235,6 +235,22 @@ func (m SelectionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "up", "k":
+			// Wrap: en üstteyken yukarı basınca en alta git
+			if m.list.Index() == 0 {
+				items := m.list.Items()
+				if len(items) > 0 {
+					m.list.Select(len(items) - 1)
+					return m, nil
+				}
+			}
+		case "down", "j":
+			// Wrap: en alttayken aşağı basınca en başa git
+			items := m.list.Items()
+			if len(items) > 0 && m.list.Index() == len(items)-1 {
+				m.list.Select(0)
+				return m, nil
+			}
 		case "enter":
 			if i, ok := m.list.SelectedItem().(listItem); ok {
 				m.selected = []string{string(i)}
@@ -321,6 +337,22 @@ func (m MultiSelectionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "up", "k":
+			// Wrap: en üstteyken yukarı basınca en alta git
+			if m.list.Index() == 0 {
+				items := m.list.Items()
+				if len(items) > 0 {
+					m.list.Select(len(items) - 1)
+					return m, nil
+				}
+			}
+		case "down", "j":
+			// Wrap: en alttayken aşağı basınca en başa git
+			items := m.list.Items()
+			if len(items) > 0 && m.list.Index() == len(items)-1 {
+				m.list.Select(0)
+				return m, nil
+			}
 		case "tab", " ":
 			items := m.list.Items()
 			if ci, ok := items[m.list.Index()].(checkboxItem); ok {
