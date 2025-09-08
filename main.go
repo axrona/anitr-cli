@@ -412,17 +412,22 @@ func mainMenu(cfx *App, timestamp time.Time) {
 }
 
 func settingsMenu(cfx *App) {
-	cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
-	if err != nil {
-		cfg = &utils.Config{}
-	}
+    cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
+    if err != nil {
+        cfg = &utils.Config{}
+    }
 
-	// Dosyayı okuma ve yazma modunda açıyoruz, mevcut içeriği sıfırlayarak
-	f, err := os.OpenFile(filepath.Join(utils.ConfigDir(), "config.json"), os.O_RDWR|os.O_CREATE, 0o644)
-	if err != nil {
-		cfx.logger.LogError(err)
-		return
-	}
+    // Dosyayı okuma ve yazma modunda açıyoruz, mevcut içeriği sıfırlayarak
+    // Config klasörü yoksa oluştur (özellikle Windows'ta ilk açılışta yok olabilir)
+    if err := os.MkdirAll(utils.ConfigDir(), 0o755); err != nil {
+        cfx.logger.LogError(fmt.Errorf("config klasörü oluşturulamadı: %w", err))
+        return
+    }
+    f, err := os.OpenFile(filepath.Join(utils.ConfigDir(), "config.json"), os.O_RDWR|os.O_CREATE, 0o644)
+    if err != nil {
+        cfx.logger.LogError(err)
+        return
+    }
 	defer f.Close() // Fonksiyon bitince dosya kapanır
 
 	// JSON yazıcı (Encoder değil)

@@ -140,25 +140,25 @@ func Ptr[T any](val T) *T {
 }
 
 func VideosDir() string {
-    cfg, err := LoadConfig(filepath.Join(ConfigDir(), "config.json"))
-    if err == nil && cfg.DownloadDir != "" {
-        return cfg.DownloadDir
-    }
+	cfg, err := LoadConfig(filepath.Join(ConfigDir(), "config.json"))
+	if err == nil && cfg.DownloadDir != "" {
+		return cfg.DownloadDir
+	}
 
-    // fallback → eski davranış
-    if runtime.GOOS == "windows" {
-        userProfile := os.Getenv("USERPROFILE")
-        if userProfile == "" {
-            userProfile = "."
-        }
-        return filepath.Join(userProfile, "Videos")
-    } else {
-        home := os.Getenv("HOME")
-        if home == "" {
-            home = "."
-        }
-        return filepath.Join(home, "Videos")
-    }
+	// fallback → eski davranış
+	if runtime.GOOS == "windows" {
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			userProfile = "."
+		}
+		return filepath.Join(userProfile, "Videos")
+	} else {
+		home := os.Getenv("HOME")
+		if home == "" {
+			home = "."
+		}
+		return filepath.Join(home, "Videos")
+	}
 }
 
 // DefaultDownloadDir işletim sistemine göre varsayılan indirme dizinini döner
@@ -181,7 +181,8 @@ func DefaultDownloadDir() string {
 // ConfigDir platforma göre config dizinini döner
 func ConfigDir() string {
 	if runtime.GOOS == "windows" {
-		// Windows → %APPDATA%\AnitrCLI
+		// Windows → Öncelikli olarak %APPDATA%\anitr-cli (history yolu ile tutarlı)
+		// Geriye dönük uyumluluk: eğer eski %APPDATA%\AnitrCLI varsa, onu kullanır.
 		appData := os.Getenv("APPDATA")
 		if appData == "" {
 			// fallback → USERPROFILE\AppData\Roaming
@@ -191,7 +192,18 @@ func ConfigDir() string {
 			}
 			appData = filepath.Join(userProfile, "AppData", "Roaming")
 		}
-		return filepath.Join(appData, "AnitrCLI")
+
+		primary := filepath.Join(appData, "anitr-cli")
+		legacy := filepath.Join(appData, "AnitrCLI")
+
+		if _, err := os.Stat(primary); err == nil {
+			return primary
+		}
+		if _, err := os.Stat(legacy); err == nil {
+			return legacy
+		}
+		// Hiçbiri yoksa varsayılan yolu kullanır.
+		return primary
 	} else {
 		// Linux / Mac → ~/.anitr-cli
 		home := os.Getenv("HOME")
@@ -201,7 +213,6 @@ func ConfigDir() string {
 		return filepath.Join(home, ".anitr-cli")
 	}
 }
-
 
 var episodeRegex = regexp.MustCompile(`(?i)(\d+(?:\.\d+)?)\s*\.?\s*Bölüm`)
 
