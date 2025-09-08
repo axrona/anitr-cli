@@ -955,8 +955,15 @@ func playAnimeLoop(
 		// Genel seçenekler
 		watchMenu = append(watchMenu, "Anime ara", "Çık")
 
+		// Menü başlığını hazırla - bölüm bilgisi ile
+		menuTitle := selectedAnimeName
+		if !isMovie {
+			currentEpisode := episodeNames[selectedEpisodeIndex]
+			menuTitle = fmt.Sprintf("%s ( %s )", selectedAnimeName, currentEpisode)
+		}
+
 		// Seçim arayüzünü göster
-		option, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, watchMenu, selectedAnimeName)
+		option, err := showSelection(App{uiMode: &uiMode, rofiFlags: &rofiFlags}, watchMenu, menuTitle)
 
 		if errors.Is(err, tui.ErrGoBack) {
 			return nil, "", err
@@ -966,6 +973,7 @@ func playAnimeLoop(
 			Mode:      uiMode,
 			RofiFlags: &rofiFlags,
 		}, err, logger)
+
 
 		switch option {
 
