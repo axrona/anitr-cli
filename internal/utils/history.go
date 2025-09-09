@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/axrona/anitr-cli/internal/player"
@@ -24,30 +23,15 @@ type AnimeHistory map[string]map[string]AnimeHistoryEntry
 
 // getHistoryPath cross-platform olarak history.json yolunu döndürür
 func getHistoryPath() (string, error) {
-	var historyDir string
-	if runtime.GOOS == "windows" {
-		appData := os.Getenv("APPDATA")
-		if appData == "" {
-			appData = os.Getenv("USERPROFILE")
-			if appData == "" {
-				return "", fmt.Errorf("APPDATA ve USERPROFILE bulunamadı")
-			}
-		}
-		historyDir = filepath.Join(appData, "anitr-cli")
-	} else {
-		home := os.Getenv("HOME")
-		if home == "" {
-			return "", fmt.Errorf("HOME bulunamadı")
-		}
-		historyDir = filepath.Join(home, ".anitr-cli")
-	}
+    // ConfigDir() ile aynı yeri kullanarak platformlar arasında tutarlılık sağlar.
+    historyDir := ConfigDir()
 
-	// Klasör yoksa oluştur
-	if err := os.MkdirAll(historyDir, 0o755); err != nil {
-		return "", fmt.Errorf("history klasörü oluşturulamadı: %w", err)
-	}
+    // Klasör yoksa oluştur
+    if err := os.MkdirAll(historyDir, 0o755); err != nil {
+        return "", fmt.Errorf("history klasörü oluşturulamadı: %w", err)
+    }
 
-	return filepath.Join(historyDir, "history.json"), nil
+    return filepath.Join(historyDir, "history.json"), nil
 }
 
 // ReadAnimeHistory history.json'u okur, yoksa yeni oluşturur
