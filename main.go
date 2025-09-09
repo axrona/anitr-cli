@@ -412,22 +412,22 @@ func mainMenu(cfx *App, timestamp time.Time) {
 }
 
 func settingsMenu(cfx *App) {
-    cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
-    if err != nil {
-        cfg = &utils.Config{}
-    }
+	cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
+	if err != nil {
+		cfg = &utils.Config{}
+	}
 
-    // Dosyayı okuma ve yazma modunda açıyoruz, mevcut içeriği sıfırlayarak
-    // Config klasörü yoksa oluştur (özellikle Windows'ta ilk açılışta yok olabilir)
-    if err := os.MkdirAll(utils.ConfigDir(), 0o755); err != nil {
-        cfx.logger.LogError(fmt.Errorf("config klasörü oluşturulamadı: %w", err))
-        return
-    }
-    f, err := os.OpenFile(filepath.Join(utils.ConfigDir(), "config.json"), os.O_RDWR|os.O_CREATE, 0o644)
-    if err != nil {
-        cfx.logger.LogError(err)
-        return
-    }
+	// Dosyayı okuma ve yazma modunda açıyoruz, mevcut içeriği sıfırlayarak
+	// Config klasörü yoksa oluştur (özellikle Windows'ta ilk açılışta yok olabilir)
+	if err := os.MkdirAll(utils.ConfigDir(), 0o755); err != nil {
+		cfx.logger.LogError(fmt.Errorf("config klasörü oluşturulamadı: %w", err))
+		return
+	}
+	f, err := os.OpenFile(filepath.Join(utils.ConfigDir(), "config.json"), os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		cfx.logger.LogError(err)
+		return
+	}
 	defer f.Close() // Fonksiyon bitince dosya kapanır
 
 	// JSON yazıcı (Encoder değil)
@@ -1618,6 +1618,92 @@ func app(cfx *App, timestamp time.Time) error {
 			return nil
 		}
 	}
+
+}
+
+// En son izlenen animeyi hızlıca devam ettiren fonksiyon
+func quickResumeLastAnime(cfx *App, timestamp time.Time) error {
+	// Geçmişi kontrol et
+	if cfx.animeHistory == nil || len(*cfx.animeHistory) == 0 {
+		return fmt.Errorf("geçmiş bulunamadı")
+	}
+
+	// En son izlenen animeyi bul
+	var latestAnime string
+	var latestAnimeId string
+	var latestEpisodeIdx int
+	var latestSource string
+	var latestTime time.Time
+
+	for sourceName, sourceData := range *cfx.animeHistory {
+		for animeName, entry := range sourceData {
+			if entry.LastWatched != nil && entry.LastWatched.After(latestTime) {
+				latestTime = *entry.LastWatched
+				latestAnime = animeName
+				latestAnimeId = *entry.AnimeId
+				latestEpisodeIdx = *entry.LastEpisodeIdx
+				latestSource = sourceName
+			}
+		}
+	}
+
+	if latestAnime == "" {
+		return fmt.Errorf("geçmişte anime bulunamadı")
+	}
+
+	// Kaynağı ayarla
+	var source models.AnimeSource
+	switch strings.ToLower(latestSource) {
+	case "openanime":
+		source = openanime.OpenAnime{}
+		cfx.selectedSource = utils.Ptr("OpenAnime")
+	case "animecix":
+		source = animecix.AnimeCix{}
+		cfx.selectedSource = utils.Ptr("AnimeciX")
+	default:
+		return fmt.Errorf("geçersiz kaynak: %s", latestSource)
+	}
+	cfx.source = &source
+
+	fmt.Printf(" Son izlenen anime devam ettiriliyor: %s\n", latestAnime)
+
+	// Anime bilgilerini al
+	animeData, err := source.GetAnimeByID(latestAnimeId)
+	if err != nil {
+		return fmt.Errorf("anime bilgileri alınamadı: %w", err)
+	}
+
+	// Anime ID ve slug'ını al
+	selectedAnimeID, selectedAnimeSlug := getAnimeIDs(source, *animeData)
+
+	// Poster URL'si
+	posterURL := animeData.ImageURL
+	if !utils.IsValidImage(posterURL) {
+		posterURL = "anitrcli"
+	}
+
+	// Bölümleri al
+	episodes, episodeNames, isMovie, selectedSeasonIndex, err := getEpisodesAndNames(
+		source, false, selectedAnimeID, selectedAnimeSlug, animeData.Title,
+	)
+	if err != nil {
+		return fmt.Errorf("bölümler alınamadı: %w", err)
+	}
+
+	// Son bölümden devam et
+	if latestEpisodeIdx >= len(episodes) {
+		latestEpisodeIdx = len(episodes) - 1
+	}
+
+	// Oynatma döngüsüne gir
+	_, _, err = playAnimeLoop(
+		source, *cfx.selectedSource, episodes, episodeNames,
+		selectedAnimeID, selectedAnimeSlug, animeData.Title,
+		isMovie, selectedSeasonIndex, *cfx.uiMode, *cfx.rofiFlags,
+		posterURL, *cfx.disableRPC, timestamp, *cfx.animeHistory, cfx.logger,
+	)
+
+	return err
 }
 
 // Ana uygulama döngüsünü yöneten fonksiyon
@@ -1679,6 +1765,18 @@ func runMain(cmd *cobra.Command, f *flags.Flags, uiMode string, logger *utils.Lo
 	}
 
 	timestamp := time.Now()
+
+	// --go bayrağı kontrol edilir
+	if f.QuickResume {
+		err := quickResumeLastAnime(currentApp, timestamp)
+		if err != nil {
+			logger.LogError(fmt.Errorf("hızlı devam etme hatası: %w", err))
+			// Hata durumunda normal menüye geç
+		} else {
+			// Başarılı olursa uygulamayı kapat
+			return
+		}
+	}
 
 	for {
 		mainMenu(currentApp, timestamp)
