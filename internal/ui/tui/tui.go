@@ -156,7 +156,7 @@ func (i seasonSeparatorItem) Description() string { return "" }
 func (i seasonSeparatorItem) FilterValue() string { return "" }
 
 // Bölüm listesini sezonlara göre grupla ve ayırıcılar ekle
-func processEpisodesWithSeparators(episodes []string) []string {
+func processEpisodesWithSeparators(episodes []string, skipSeparators bool) []string {
 	if len(episodes) == 0 {
 		return episodes
 	}
@@ -170,8 +170,8 @@ func processEpisodesWithSeparators(episodes []string) []string {
 		}
 	}
 
-	// Eğer hiç bölüm formatında string yoksa, orijinal listeyi döndür
-	if episodeCount == 0 {
+	// Eğer hiç bölüm formatında string yoksa veya ayırıcılar atlanacaksa, orijinal listeyi döndür
+	if episodeCount == 0 || skipSeparators {
 		return episodes
 	}
 
@@ -298,7 +298,7 @@ type SelectionListModel struct {
 
 func NewSelectionListModel(params internal.UiParams) SelectionListModel {
 	// Bölüm listesini işle ve sezon ayırıcıları ekle
-	processedList := processEpisodesWithSeparators(*params.List)
+	processedList := processEpisodesWithSeparators(*params.List, params.SkipSeasonSeparators)
 	items := make([]list.Item, len(processedList))
 
 	for i, v := range processedList {
@@ -471,7 +471,7 @@ type MultiSelectionListModel struct {
 
 func NewMultiSelectionListModel(params internal.UiParams) MultiSelectionListModel {
 	// Bölüm listesini işle ve sezon ayırıcıları ekle
-	processedList := processEpisodesWithSeparators(*params.List)
+	processedList := processEpisodesWithSeparators(*params.List, params.SkipSeasonSeparators)
 	items := make([]list.Item, len(processedList))
 
 	for i, v := range processedList {

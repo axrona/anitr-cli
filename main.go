@@ -640,10 +640,13 @@ func anitrHistory(params internal.UiParams, source string, historyLimit int, log
 	}
 
 	// TUI ile seçim al
-	selectedKey, selErr := showSelection(App{
-		uiMode:    &params.Mode,
-		rofiFlags: params.RofiFlags,
-	}, keys, "Geçmiş")
+	selectedKey, selErr := ui.SelectionList(internal.UiParams{
+		Mode:                 params.Mode,
+		List:                 &keys,
+		Label:                "Geçmiş",
+		RofiFlags:            params.RofiFlags,
+		SkipSeasonSeparators: true,
+	})
 	if selErr != nil {
 		err = selErr
 		return
