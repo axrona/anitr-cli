@@ -956,7 +956,7 @@ func playAnimeLoop(
 		}
 
 		// Genel seçenekler
-		watchMenu = append(watchMenu, "Anime ara", "Çık")
+		watchMenu = append(watchMenu, "────────────────────", "Anime ara", "Çık")
 
 		// Menü başlığını hazırla - bölüm bilgisi ile
 		menuTitle := selectedAnimeName
@@ -976,7 +976,6 @@ func playAnimeLoop(
 			Mode:      uiMode,
 			RofiFlags: &rofiFlags,
 		}, err, logger)
-
 
 		switch option {
 
