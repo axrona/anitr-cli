@@ -412,22 +412,22 @@ func mainMenu(cfx *App, timestamp time.Time) {
 }
 
 func settingsMenu(cfx *App) {
-    cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
-    if err != nil {
-        cfg = &utils.Config{}
-    }
+	cfg, err := utils.LoadConfig(filepath.Join(utils.ConfigDir(), "config.json"))
+	if err != nil {
+		cfg = &utils.Config{}
+	}
 
-    // Dosyayı okuma ve yazma modunda açıyoruz, mevcut içeriği sıfırlayarak
-    // Config klasörü yoksa oluştur (özellikle Windows'ta ilk açılışta yok olabilir)
-    if err := os.MkdirAll(utils.ConfigDir(), 0o755); err != nil {
-        cfx.logger.LogError(fmt.Errorf("config klasörü oluşturulamadı: %w", err))
-        return
-    }
-    f, err := os.OpenFile(filepath.Join(utils.ConfigDir(), "config.json"), os.O_RDWR|os.O_CREATE, 0o644)
-    if err != nil {
-        cfx.logger.LogError(err)
-        return
-    }
+	// Dosyayı okuma ve yazma modunda açıyoruz, mevcut içeriği sıfırlayarak
+	// Config klasörü yoksa oluştur (özellikle Windows'ta ilk açılışta yok olabilir)
+	if err := os.MkdirAll(utils.ConfigDir(), 0o755); err != nil {
+		cfx.logger.LogError(fmt.Errorf("config klasörü oluşturulamadı: %w", err))
+		return
+	}
+	f, err := os.OpenFile(filepath.Join(utils.ConfigDir(), "config.json"), os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		cfx.logger.LogError(err)
+		return
+	}
 	defer f.Close() // Fonksiyon bitince dosya kapanır
 
 	// JSON yazıcı (Encoder değil)
@@ -506,9 +506,10 @@ func settingsMenu(cfx *App) {
 			}
 
 		case menuOptions[1]: // Kaynak değiştir
-			selectedSource, _ := selectSource(*cfx.uiMode, *cfx.rofiFlags, *cfx.source, cfx.logger)
-			cfx.selectedSource = &selectedSource
-			cfg.DefaultSource = selectedSource
+			selectedSourceName, selectedSource := selectSource(*cfx.uiMode, *cfx.rofiFlags, *cfx.source, cfx.logger)
+			cfx.selectedSource = &selectedSourceName
+			cfx.source = &selectedSource
+			cfg.DefaultSource = selectedSourceName
 			changesMade = true
 
 		case menuOptions[2]: // Geçmiş limitini değiştir
