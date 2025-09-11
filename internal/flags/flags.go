@@ -3,8 +3,8 @@ package flags
 import (
 	"runtime"
 
-	"github.com/spf13/cobra"
 	"github.com/axrona/anitr-cli/internal/update"
+	"github.com/spf13/cobra"
 )
 
 type Flags struct {
@@ -12,6 +12,7 @@ type Flags struct {
 	PrintVersion bool
 	RofiMode     bool
 	RofiFlags    string
+	QuickResume  bool
 }
 
 func NewFlagsCmd() (*cobra.Command, *Flags) {
@@ -30,6 +31,9 @@ func NewFlagsCmd() (*cobra.Command, *Flags) {
 
 	cmd.PersistentFlags().BoolVar(&f.DisableRPC, "disable-rpc", false,
 		"Discord Rich Presence desteğini devre dışı bırakır.")
+
+	cmd.PersistentFlags().BoolVar(&f.QuickResume, "go", false,
+		"Son izlenen anime bölümünü açar.")
 
 	cmd.SetVersionTemplate(update.Version())
 	cmd.Version = update.Version()

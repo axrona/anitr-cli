@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +50,10 @@ var (
 	normalStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(normalFgColor)).
 			Padding(0, 1)
+
+	headerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#444")).
+			Italic(true)
 )
 
 // Spinner modeli
@@ -137,6 +144,101 @@ type checkboxItem struct {
 	Selected bool
 }
 
+// Genel ayırıcı item - her türlü separator için kullanılabilir
+type separatorItem struct {
+	Text string
+}
+
+func (i separatorItem) Title() string {
+	return i.Text
+}
+func (i separatorItem) Description() string { return "" }
+func (i separatorItem) FilterValue() string { return "" }
+
+// Bir item'ın separator olup olmadığını kontrol eden yardımcı fonksiyon
+func isSeparator(item list.Item) bool {
+	_, isSeasonSeparator := item.(seasonSeparatorItem)
+	_, isGeneralSeparator := item.(separatorItem)
+	return isSeasonSeparator || isGeneralSeparator
+}
+
+// Sezon ayırıcısı için özel item (geriye uyumluluk için)
+type seasonSeparatorItem struct {
+	SeasonNumber int
+}
+
+func (i seasonSeparatorItem) Title() string {
+	return fmt.Sprintf("────────── %d. Sezon ──────────", i.SeasonNumber)
+}
+func (i seasonSeparatorItem) Description() string { return "" }
+func (i seasonSeparatorItem) FilterValue() string { return "" }
+
+// Bölüm listesini sezonlara göre grupla ve ayırıcılar ekle
+func processEpisodesWithSeparators(episodes []string, skipSeasonSeparators bool, skipAllSeparators bool) []string {
+	if len(episodes) == 0 {
+		return episodes
+	}
+
+	// Eğer tüm separator'lar atlanacaksa, orijinal listeyi döndür
+	if skipAllSeparators {
+		return episodes
+	}
+
+	// Önce bu listenin gerçekten bölüm listesi olup olmadığını kontrol et
+	seasonRegex := regexp.MustCompile(`(\d+)\. Sezon, (\d+)\. Bölüm`)
+	episodeCount := 0
+	for _, episode := range episodes {
+		if seasonRegex.MatchString(episode) {
+			episodeCount++
+		}
+	}
+
+	// Eğer hiç bölüm formatında string yoksa veya sezon ayırıcıları atlanacaksa, orijinal listeyi döndür
+	if episodeCount == 0 || skipSeasonSeparators {
+		return episodes
+	}
+
+	// Sezon numaralarını çıkar ve grupla
+	seasonMap := make(map[int][]string)
+
+	for _, episode := range episodes {
+		matches := seasonRegex.FindStringSubmatch(episode)
+		if len(matches) >= 3 {
+			seasonNum, err := strconv.Atoi(matches[1])
+			if err == nil {
+				seasonMap[seasonNum] = append(seasonMap[seasonNum], episode)
+			}
+		} else {
+			// Eğer format uymazsa orijinal listeye ekle
+			seasonMap[0] = append(seasonMap[0], episode)
+		}
+	}
+
+	// Sezon numaralarını sırala
+	var seasons []int
+	for season := range seasonMap {
+		seasons = append(seasons, season)
+	}
+	sort.Ints(seasons)
+
+	// Yeni listeyi oluştur
+	var result []string
+	for _, season := range seasons {
+		if season > 0 {
+			// Sezon ayırıcısı ekle
+			separator := fmt.Sprintf("────────── %d. Sezon ──────────", season)
+			result = append(result, separator)
+			// Bölümleri ekle
+			result = append(result, seasonMap[season]...)
+		} else if season == 0 {
+			// Sezon 0 (format uymayanlar) - ayırıcı olmadan ekle
+			result = append(result, seasonMap[season]...)
+		}
+	}
+
+	return result
+}
+
 func (i checkboxItem) Title() string       { return i.TitleStr }
 func (i checkboxItem) Description() string { return "" }
 func (i checkboxItem) FilterValue() string { return i.TitleStr }
@@ -150,6 +252,8 @@ func (d slimDelegate) Height() int  { return 1 }
 func (d slimDelegate) Spacing() int { return 0 }
 func (d slimDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
 	title := ""
+	isSeasonSeparator := false
+
 	if li, ok := item.(listItem); ok {
 		// Tek seçimli item
 		title = li.Title()
@@ -169,8 +273,23 @@ func (d slimDelegate) Render(w io.Writer, m list.Model, index int, item list.Ite
 		}
 
 		title = check + ci.Title()
+	} else if si, ok := item.(seasonSeparatorItem); ok {
+		// Sezon ayırıcısı
+		title = si.Title()
+		isSeasonSeparator = true
+	} else if sep, ok := item.(separatorItem); ok {
+		// Genel ayırıcı
+		title = sep.Title()
+		isSeasonSeparator = true // Aynı rendering kullan
 	} else {
 		title = "???"
+	}
+
+	// Sezon ayırıcısı için özel rendering
+	if isSeasonSeparator {
+		line := headerStyle.Render(title)
+		fmt.Fprint(w, line)
+		return
 	}
 
 	// Seçili item için prefix
@@ -205,9 +324,31 @@ type SelectionListModel struct {
 }
 
 func NewSelectionListModel(params internal.UiParams) SelectionListModel {
-	items := make([]list.Item, len(*params.List))
-	for i, v := range *params.List {
-		items[i] = listItem(v)
+	// Bölüm listesini işle ve sezon ayırıcıları ekle
+	processedList := processEpisodesWithSeparators(*params.List, params.SkipSeasonSeparators, params.SkipAllSeparators)
+	items := make([]list.Item, len(processedList))
+
+	for i, v := range processedList {
+		// Sezon ayırıcısı mı kontrol et
+		if strings.Contains(v, "──────") && strings.Contains(v, "Sezon") {
+			// Sezon numarasını çıkar
+			seasonRegex := regexp.MustCompile(`(\d+)\. Sezon`)
+			matches := seasonRegex.FindStringSubmatch(v)
+			if len(matches) >= 2 {
+				if seasonNum, err := strconv.Atoi(matches[1]); err == nil {
+					items[i] = seasonSeparatorItem{SeasonNumber: seasonNum}
+				} else {
+					items[i] = listItem(v)
+				}
+			} else {
+				items[i] = listItem(v)
+			}
+		} else if strings.Contains(v, "──────") {
+			// Genel ayırıcı
+			items[i] = separatorItem{Text: v}
+		} else {
+			items[i] = listItem(v)
+		}
 	}
 
 	const defaultWidth, defaultHeight = 48, 20
@@ -223,6 +364,14 @@ func NewSelectionListModel(params internal.UiParams) SelectionListModel {
 	l.FilterInput.TextStyle = filterInputStyle
 	l.FilterInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(filterCursorFg))
 
+	// İlk seçilebilir itemi bul ve seç
+	for i := 0; i < len(items); i++ {
+		if _, ok := items[i].(seasonSeparatorItem); !ok {
+			l.Select(i)
+			break
+		}
+	}
+
 	return SelectionListModel{list: l}
 }
 
@@ -235,6 +384,65 @@ func (m SelectionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "up", "k":
+			// Wrap: en üstteyken yukarı basınca en alta git
+			if m.list.Index() == 0 {
+				items := m.list.Items()
+				if len(items) > 0 {
+					// En son seçilebilir itemi bul
+					for i := len(items) - 1; i >= 0; i-- {
+						if !isSeparator(items[i]) {
+							m.list.Select(i)
+							return m, nil
+						}
+					}
+				}
+			} else {
+				// Yukarı git ama sezon ayırıcılarını atla
+				items := m.list.Items()
+				currentIndex := m.list.Index()
+				for i := currentIndex - 1; i >= 0; i-- {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+				// Eğer yukarıda seçilebilir item yoksa en alta git
+				for i := len(items) - 1; i >= 0; i-- {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+			}
+		case "down", "j":
+			// Wrap: en alttayken aşağı basınca en başa git
+			items := m.list.Items()
+			if len(items) > 0 && m.list.Index() == len(items)-1 {
+				// İlk seçilebilir itemi bul
+				for i := 0; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+			} else {
+				// Aşağı git ama sezon ayırıcılarını atla
+				currentIndex := m.list.Index()
+				for i := currentIndex + 1; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+				// Eğer aşağıda seçilebilir item yoksa en başa git
+				for i := 0; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+			}
 		case "enter":
 			if i, ok := m.list.SelectedItem().(listItem); ok {
 				m.selected = []string{string(i)}
@@ -292,9 +500,31 @@ type MultiSelectionListModel struct {
 }
 
 func NewMultiSelectionListModel(params internal.UiParams) MultiSelectionListModel {
-	items := make([]list.Item, len(*params.List))
-	for i, v := range *params.List {
-		items[i] = checkboxItem{TitleStr: v}
+	// Bölüm listesini işle ve sezon ayırıcıları ekle
+	processedList := processEpisodesWithSeparators(*params.List, params.SkipSeasonSeparators, params.SkipAllSeparators)
+	items := make([]list.Item, len(processedList))
+
+	for i, v := range processedList {
+		// Sezon ayırıcısı mı kontrol et
+		if strings.Contains(v, "──────") && strings.Contains(v, "Sezon") {
+			// Sezon numarasını çıkar
+			seasonRegex := regexp.MustCompile(`(\d+)\. Sezon`)
+			matches := seasonRegex.FindStringSubmatch(v)
+			if len(matches) >= 2 {
+				if seasonNum, err := strconv.Atoi(matches[1]); err == nil {
+					items[i] = seasonSeparatorItem{SeasonNumber: seasonNum}
+				} else {
+					items[i] = checkboxItem{TitleStr: v}
+				}
+			} else {
+				items[i] = checkboxItem{TitleStr: v}
+			}
+		} else if strings.Contains(v, "──────") {
+			// Genel ayırıcı
+			items[i] = separatorItem{Text: v}
+		} else {
+			items[i] = checkboxItem{TitleStr: v}
+		}
 	}
 
 	const defaultWidth, defaultHeight = 48, 20
@@ -309,6 +539,14 @@ func NewMultiSelectionListModel(params internal.UiParams) MultiSelectionListMode
 	l.FilterInput.TextStyle = filterInputStyle
 	l.FilterInput.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(filterCursorFg))
 
+	// İlk seçilebilir itemi bul ve seç
+	for i := 0; i < len(items); i++ {
+		if _, ok := items[i].(seasonSeparatorItem); !ok {
+			l.Select(i)
+			break
+		}
+	}
+
 	return MultiSelectionListModel{list: l}
 }
 
@@ -321,6 +559,65 @@ func (m MultiSelectionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "up", "k":
+			// Wrap: en üstteyken yukarı basınca en alta git
+			if m.list.Index() == 0 {
+				items := m.list.Items()
+				if len(items) > 0 {
+					// En son seçilebilir itemi bul
+					for i := len(items) - 1; i >= 0; i-- {
+						if !isSeparator(items[i]) {
+							m.list.Select(i)
+							return m, nil
+						}
+					}
+				}
+			} else {
+				// Yukarı git ama sezon ayırıcılarını atla
+				items := m.list.Items()
+				currentIndex := m.list.Index()
+				for i := currentIndex - 1; i >= 0; i-- {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+				// Eğer yukarıda seçilebilir item yoksa en alta git
+				for i := len(items) - 1; i >= 0; i-- {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+			}
+		case "down", "j":
+			// Wrap: en alttayken aşağı basınca en başa git
+			items := m.list.Items()
+			if len(items) > 0 && m.list.Index() == len(items)-1 {
+				// İlk seçilebilir itemi bul
+				for i := 0; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+			} else {
+				// Aşağı git ama sezon ayırıcılarını atla
+				currentIndex := m.list.Index()
+				for i := currentIndex + 1; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+				// Eğer aşağıda seçilebilir item yoksa en başa git
+				for i := 0; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+			}
 		case "tab", " ":
 			items := m.list.Items()
 			if ci, ok := items[m.list.Index()].(checkboxItem); ok {
@@ -328,10 +625,20 @@ func (m MultiSelectionListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				items[m.list.Index()] = ci
 				m.list.SetItems(items)
 
-				if m.list.Index() == len(items)-1 {
-					m.list.Select(0) // ilk iteme al
-				} else {
-					m.list.CursorDown() // normalde bir alta in
+				// Sonraki seçilebilir iteme git
+				currentIndex := m.list.Index()
+				for i := currentIndex + 1; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
+				}
+				// Eğer aşağıda seçilebilir item yoksa en başa git
+				for i := 0; i < len(items); i++ {
+					if !isSeparator(items[i]) {
+						m.list.Select(i)
+						return m, nil
+					}
 				}
 			}
 		case "enter":
