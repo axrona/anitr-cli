@@ -136,7 +136,8 @@ anitr-cli [alt komut] [bayraklar]
 ```
 
 Bayraklar:   
-  `--disable-rpc`         Discord Rich Presence özelliğini kapatır   
+  `--disable-rpc`       Discord Rich Presence desteğini devre dışı bırakır. 
+  `--go`                Son izlenen anime bölümünü açar.
   `--version`, `-v`       Sürüm bilgisini gösterir   
   `--help`, `-h`          Yardım menüsünü gösterir   
   `--rofi`                **[Kullanımdan kaldırıldı]** Yerine 'rofi' alt komutunu kullanın (Sadece Linux)  
