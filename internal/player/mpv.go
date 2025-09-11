@@ -81,7 +81,7 @@ func Play(params MPVParams) (*exec.Cmd, string, error) {
 
 	// Eğer altyazı URL'si varsa, altyazı dosyasını ekle
 	if params.SubtitleUrl != nil && *params.SubtitleUrl != "" {
-		args = append(args, "--sub-file", *params.SubtitleUrl)
+		args = append(args, "--sub-file=", *params.SubtitleUrl)
 	}
 
 	// Video URL'sini ekle
@@ -89,6 +89,7 @@ func Play(params MPVParams) (*exec.Cmd, string, error) {
 
 	mpvBinary := getMPVBinary()
 	cmd := exec.Command(mpvBinary, args...)
+	fmt.Printf("%s %s\n", mpvBinary, strings.Join(args, " "))
 	if err := cmd.Start(); err != nil {
 		return cmd, "", err // Başlatma hatası
 	}
