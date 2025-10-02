@@ -144,7 +144,7 @@ Bayraklar:
 
 Alt komutlar: (Sadece Linux)
   rofi                  Rofi arayüzü ile başlatır   
-  -f, --rofi-flags      Rofi’ye özel parametreler (örn: --rofi-flags="-theme mytheme")   
+     -f, --rofi-flags      Rofi’ye özel parametreler (örn: --rofi-flags="-theme mytheme")   
   tui                   Terminal arayüzü ile başlatır   
 ```
 ---
