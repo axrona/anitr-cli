@@ -134,19 +134,19 @@ brew install youtube-dl
 ```bash
 anitr-cli [alt komut] [bayraklar]
 ```
-
+```
 Bayraklar:   
-  `--disable-rpc`       Discord Rich Presence desteğini devre dışı bırakır.  
-  `--go`                Son izlenen anime bölümünü açar.   
-  `--version`, `-v`       Sürüm bilgisini gösterir   
-  `--help`, `-h`          Yardım menüsünü gösterir   
-  `--rofi`                **[Kullanımdan kaldırıldı]** Yerine 'rofi' alt komutunu kullanın (Sadece Linux)  
+  --disable-rpc       Discord Rich Presence desteğini devre dışı bırakır.  
+  --go                Son izlenen anime bölümünü açar.   
+  --version, -v       Sürüm bilgisini gösterir   
+  --help, -h          Yardım menüsünü gösterir   
+  --rofi              [Kullanımdan kaldırıldı] Yerine rofi alt komutunu kullanın (Sadece Linux)  
 
 Alt komutlar: (Sadece Linux)
-  `rofi`                  Rofi arayüzü ile başlatır
-    `-f`, `--rofi-flags`  Rofi’ye özel parametreler (örn: `--rofi-flags="-theme mytheme"`)   
-  `tui`                   Terminal arayüzü ile başlatır   
-
+  rofi                  Rofi arayüzü ile başlatır   
+  -f, --rofi-flags      Rofi’ye özel parametreler (örn: --rofi-flags="-theme mytheme")   
+  tui                   Terminal arayüzü ile başlatır   
+```
 ---
 
 ## 💡 Sorunlar & Katkı
